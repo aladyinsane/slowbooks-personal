@@ -261,7 +261,8 @@ class TestPagination:
         supplies = accounts.by_code(conn, "6100").id
         opening_balance = accounts.by_code(conn, "3000").id
         ledger.post(conn, "2026-01-01", "Opening",
-                    [ledger.debit(checking, 1_000_00), ledger.credit(opening_balance, 1_000_00)])
+                    [ledger.debit(checking, 1_000_00),
+                     ledger.credit(opening_balance, 1_000_00)])
         for day in range(1, 26):
             ledger.post(conn, f"2026-02-{day:02d}", f"Purchase {day}",
                         [ledger.debit(supplies, 1_00), ledger.credit(checking, 1_00)])

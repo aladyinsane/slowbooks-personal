@@ -444,7 +444,8 @@ class TestReconciliationEndpoints:
     def test_status_starts_empty(self, client):
         status = client.get("/api/reconciliation/status").json()
         # Only statement accounts, and nothing reconciled yet.
-        assert {s["account"].split()[0] for s in status} == {"1000", "1010", "1020", "2100", "2500"}
+        codes = {s["account"].split()[0] for s in status}
+        assert codes == {"1000", "1010", "1020", "2100", "2500"}
         assert all(s["reconciled_through"] is None for s in status)
 
     def test_preview_reports_a_match(self, client, checking_id):
