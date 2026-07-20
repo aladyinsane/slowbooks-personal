@@ -39,6 +39,10 @@ export function AccountsPanel() {
   const [newType, setNewType] = useState("expense");
   const [newGuidance, setNewGuidance] = useState("");
   const [newGroupId, setNewGroupId] = useState<string>("");
+  const [editingGroup, setEditingGroup] = useState<number | null>(null);
+  const [draftGroupName, setDraftGroupName] = useState("");
+  const [addingGroupForType, setAddingGroupForType] = useState<string | null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -129,6 +133,126 @@ export function AccountsPanel() {
     }
   }
 
+  function startEditGroup(group: Group) {
+    setEditingGroup(group.id);
+    setDraftGroupName(group.name);
+    setError(null);
+  }
+
+  async function saveGroup(id: number) {
+    setBusy(true);
+    try {
+      await api.updateGroup(id, { name: draftGroupName });
+      setEditingGroup(null);
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeGroup(group: Group) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.deleteGroup(group.id);
+      await refresh();
+    } catch (e) {
+      // Carries the "has N accounts filed under it" explanation (ADR 0014).
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addGroup(type: string) {
+    if (!newGroupName.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.createGroup({ name: newGroupName.trim(), type });
+      setNewGroupName("");
+      setAddingGroupForType(null);
+      await refresh();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function renderAccountRow(account: ManagedAccount, typeGroups: Group[]) {
+    return (
+      <li key={account.id} className={account.is_active ? undefined : "hidden-account"}>
+        {editing === account.id ? (
+          <div className="account-edit">
+            <input
+              type="text"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              aria-label="Category name"
+            />
+            <input
+              type="text"
+              className="wide"
+              value={draftGuidance}
+              placeholder="What belongs here?"
+              onChange={(e) => setDraftGuidance(e.target.value)}
+              aria-label="Guidance"
+            />
+            <select
+              value={draftGroupId}
+              onChange={(e) => setDraftGroupId(e.target.value)}
+              aria-label="Group"
+            >
+              <option value="">{UNGROUPED}</option>
+              {typeGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+            <button className="primary" disabled={busy} onClick={() => save(account.id)}>
+              Save
+            </button>
+            <button disabled={busy} onClick={() => setEditing(null)}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <>
+            <span className="account-main">
+              <span className="picker-code">{account.code}</span> {account.name}
+              {!account.is_active && <span className="badge badge-review">hidden</span>}
+              {account.is_statement_account && (
+                <span className="badge badge-transfer">statement</span>
+              )}
+            </span>
+            {account.guidance && <span className="account-hint">{account.guidance}</span>}
+            <span className="account-actions">
+              <button className="link" disabled={busy} onClick={() => startEdit(account)}>
+                rename
+              </button>
+              {!account.is_statement_account && (
+                <button className="link" disabled={busy} onClick={() => toggleHidden(account)}>
+                  {account.is_active ? "hide" : "unhide"}
+                </button>
+              )}
+              {/* Only offered when it's real. A button that only sometimes
+                  works is the one people learn to distrust (ADR 0010). */}
+              {account.can_delete && (
+                <button className="link" disabled={busy} onClick={() => remove(account)}>
+                  delete
+                </button>
+              )}
+            </span>
+          </>
+        )}
+      </li>
+    );
+  }
+
   if (!open) {
     return (
       <section className="accounts-collapsed">
@@ -156,96 +280,99 @@ export function AccountsPanel() {
 
       {TYPE_ORDER.map((type) => {
         const typeAccounts = accounts.filter((a) => a.type === type);
-        if (typeAccounts.length === 0) return null;
-
-        // Grouped for display (ADR 0014); an account with no group renders under
-        // "Other" rather than being hidden or treated as an error.
-        const byGroup = new Map<string, ManagedAccount[]>();
-        for (const account of typeAccounts) {
-          const key = account.group_name ?? UNGROUPED;
-          if (!byGroup.has(key)) byGroup.set(key, []);
-          byGroup.get(key)!.push(account);
-        }
         const typeGroups = groups.filter((g) => g.type === type);
+        if (typeAccounts.length === 0 && typeGroups.length === 0) return null;
+
+        // Every group for this type renders, even an empty one -- otherwise a group
+        // with no accounts yet (just created, or emptied out by moving its last
+        // account elsewhere) would have no way to be seen, renamed, or deleted.
+        const ungroupedAccounts = typeAccounts.filter((a) => a.group_id == null);
 
         return (
           <div key={type} className="account-group">
             <h3>{TYPE_LABELS[type]}</h3>
-            {[...byGroup.entries()].map(([groupName, groupAccounts]) => (
-              <div key={groupName} className="account-subgroup">
-                <h4>{groupName}</h4>
+            {typeGroups.map((g) => {
+              const groupAccounts = typeAccounts.filter((a) => a.group_id === g.id);
+              return (
+                <div key={g.id} className="account-subgroup">
+                  {editingGroup === g.id ? (
+                    <div className="account-edit">
+                      <input
+                        type="text"
+                        value={draftGroupName}
+                        onChange={(e) => setDraftGroupName(e.target.value)}
+                        aria-label="Group name"
+                      />
+                      <button className="primary" disabled={busy} onClick={() => saveGroup(g.id)}>
+                        Save
+                      </button>
+                      <button disabled={busy} onClick={() => setEditingGroup(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <h4>
+                      {g.name}
+                      <span className="account-actions">
+                        <button className="link" disabled={busy} onClick={() => startEditGroup(g)}>
+                          rename
+                        </button>
+                        {/* Only offered when it's real, same reasoning as account delete
+                            (ADR 0010): a button that only sometimes works teaches
+                            distrust. */}
+                        {groupAccounts.length === 0 && (
+                          <button className="link" disabled={busy} onClick={() => removeGroup(g)}>
+                            delete
+                          </button>
+                        )}
+                      </span>
+                    </h4>
+                  )}
+                  {groupAccounts.length === 0 ? (
+                    <p className="account-hint">Nothing filed here yet.</p>
+                  ) : (
+                    <ul className="account-list">
+                      {groupAccounts.map((account) => renderAccountRow(account, typeGroups))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+
+            {ungroupedAccounts.length > 0 && (
+              <div className="account-subgroup">
+                <h4>{UNGROUPED}</h4>
                 <ul className="account-list">
-                  {groupAccounts.map((account) => (
-                    <li key={account.id} className={account.is_active ? undefined : "hidden-account"}>
-                      {editing === account.id ? (
-                        <div className="account-edit">
-                          <input
-                            type="text"
-                            value={draftName}
-                            onChange={(e) => setDraftName(e.target.value)}
-                            aria-label="Category name"
-                          />
-                          <input
-                            type="text"
-                            className="wide"
-                            value={draftGuidance}
-                            placeholder="What belongs here?"
-                            onChange={(e) => setDraftGuidance(e.target.value)}
-                            aria-label="Guidance"
-                          />
-                          <select
-                            value={draftGroupId}
-                            onChange={(e) => setDraftGroupId(e.target.value)}
-                            aria-label="Group"
-                          >
-                            <option value="">{UNGROUPED}</option>
-                            {typeGroups.map((g) => (
-                              <option key={g.id} value={g.id}>
-                                {g.name}
-                              </option>
-                            ))}
-                          </select>
-                          <button className="primary" disabled={busy} onClick={() => save(account.id)}>
-                            Save
-                          </button>
-                          <button disabled={busy} onClick={() => setEditing(null)}>
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="account-main">
-                            <span className="picker-code">{account.code}</span> {account.name}
-                            {!account.is_active && <span className="badge badge-review">hidden</span>}
-                            {account.is_statement_account && (
-                              <span className="badge badge-transfer">statement</span>
-                            )}
-                          </span>
-                          {account.guidance && <span className="account-hint">{account.guidance}</span>}
-                          <span className="account-actions">
-                            <button className="link" disabled={busy} onClick={() => startEdit(account)}>
-                              rename
-                            </button>
-                            {!account.is_statement_account && (
-                              <button className="link" disabled={busy} onClick={() => toggleHidden(account)}>
-                                {account.is_active ? "hide" : "unhide"}
-                              </button>
-                            )}
-                            {/* Only offered when it's real. A button that only sometimes
-                                works is the one people learn to distrust (ADR 0010). */}
-                            {account.can_delete && (
-                              <button className="link" disabled={busy} onClick={() => remove(account)}>
-                                delete
-                              </button>
-                            )}
-                          </span>
-                        </>
-                      )}
-                    </li>
-                  ))}
+                  {ungroupedAccounts.map((account) => renderAccountRow(account, typeGroups))}
                 </ul>
               </div>
-            ))}
+            )}
+
+            {addingGroupForType === type ? (
+              <div className="account-add">
+                <input
+                  type="text"
+                  placeholder="Group name, e.g. Kids & Pets"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  aria-label="New group name"
+                />
+                <button
+                  className="primary"
+                  disabled={busy || !newGroupName.trim()}
+                  onClick={() => addGroup(type)}
+                >
+                  Add
+                </button>
+                <button disabled={busy} onClick={() => setAddingGroupForType(null)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button className="link" onClick={() => setAddingGroupForType(type)}>
+                + add group
+              </button>
+            )}
           </div>
         );
       })}
