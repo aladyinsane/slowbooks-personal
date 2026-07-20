@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  api,
-  type BalanceSheet,
-  type ProfitAndLoss,
-  type ReportLine,
-  type TrialBalance,
-} from "../lib/api";
+import { api, type IncomeAndExpenses, type NetWorth, type ReportLine } from "../lib/api";
 
 /**
  * The reports, on screen at last (ADR 0012).
@@ -16,6 +10,10 @@ import {
  *
  * Every line is a button, because principle 8's test is "can the user get from any
  * number to the underlying transactions?" — and until now the answer was no.
+ *
+ * Trial Balance isn't a tab here (ADR 0015): "are my debits equal to my credits" isn't
+ * a question a household asks, and no personal-finance app surfaces its equivalent. It's
+ * still one API call or export away for whoever does want it.
  */
 
 interface Props {
@@ -38,24 +36,21 @@ function formatLong(iso: string): string {
 }
 
 export function ReportsPanel({ onDrillDown }: Props) {
-  const [tab, setTab] = useState<"pnl" | "balance" | "trial">("pnl");
+  const [tab, setTab] = useState<"pnl" | "balance">("pnl");
   const [start, setStart] = useState(yearStartISO());
   const [end, setEnd] = useState(todayISO());
-  const [pnl, setPnl] = useState<ProfitAndLoss | null>(null);
-  const [sheet, setSheet] = useState<BalanceSheet | null>(null);
-  const [trial, setTrial] = useState<TrialBalance | null>(null);
+  const [pnl, setPnl] = useState<IncomeAndExpenses | null>(null);
+  const [sheet, setSheet] = useState<NetWorth | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [p, b, t] = await Promise.all([
-        api.profitAndLoss(start, end),
-        api.balanceSheet(end),
-        api.trialBalance(end),
+      const [p, b] = await Promise.all([
+        api.incomeAndExpenses(start, end),
+        api.netWorth(end),
       ]);
       setPnl(p);
       setSheet(b);
-      setTrial(t);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -104,8 +99,7 @@ export function ReportsPanel({ onDrillDown }: Props) {
     </>
   );
 
-  const reportTitle =
-    tab === "pnl" ? "Profit & Loss" : tab === "balance" ? "Balance Sheet" : "Trial Balance";
+  const reportTitle = tab === "pnl" ? "Income & Expenses" : "Net Worth";
   const periodLabel =
     tab === "pnl" ? `For ${formatLong(start)} – ${formatLong(end)}` : `As of ${formatLong(end)}`;
 
@@ -126,13 +120,10 @@ export function ReportsPanel({ onDrillDown }: Props) {
       <div className="report-controls">
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={tab === "pnl"} onClick={() => setTab("pnl")}>
-            Profit &amp; Loss
+            Income &amp; Expenses
           </button>
           <button role="tab" aria-selected={tab === "balance"} onClick={() => setTab("balance")}>
-            Balance Sheet
-          </button>
-          <button role="tab" aria-selected={tab === "trial"} onClick={() => setTab("trial")}>
-            Trial Balance
+            Net Worth
           </button>
         </div>
         <div className="report-dates">
@@ -203,36 +194,6 @@ export function ReportsPanel({ onDrillDown }: Props) {
                   ? "Assets match liabilities plus equity, as they must."
                   : "THESE DO NOT BALANCE — this is a bug, please tell us."}
               </td>
-            </tr>
-          </tbody>
-        </table>
-      )}
-
-      {tab === "trial" && trial && (
-        <table className="report trial-table">
-          <thead>
-            <tr>
-              <th>Account</th>
-              <th className="num">Debit</th>
-              <th className="num">Credit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trial.lines.map((line) => (
-              <tr key={line.code}>
-                <td>
-                  <button className="drill" onClick={() => onDrillDown(line.code)}>
-                    <span className="picker-code">{line.code}</span> {line.name}
-                  </button>
-                </td>
-                <td className="num">{line.debit}</td>
-                <td className="num">{line.credit}</td>
-              </tr>
-            ))}
-            <tr className="report-bottom-line">
-              <td>Total</td>
-              <td className="num">{trial.total_debits}</td>
-              <td className="num">{trial.total_credits}</td>
             </tr>
           </tbody>
         </table>

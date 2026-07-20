@@ -65,7 +65,7 @@ def balance_sheet(conn: sqlite3.Connection, as_of: date | str) -> dict[str, obje
     total_equity = sum(int(item["amount_minor"]) for item in equity_lines)
 
     return {
-        "report": "Balance Sheet",
+        "report": "Net Worth",
         "basis": "accrual",
         "as_of": as_of_iso,
         "assets": {

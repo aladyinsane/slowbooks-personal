@@ -85,7 +85,8 @@ export interface ReportSection {
   total: string;
 }
 
-export interface ProfitAndLoss {
+/** "Income & Expenses" (ADR 0015) -- what accounting calls Profit & Loss. */
+export interface IncomeAndExpenses {
   report: string;
   basis: string;
   period: { start: string; end: string };
@@ -95,7 +96,8 @@ export interface ProfitAndLoss {
   net_income: string;
 }
 
-export interface BalanceSheet {
+/** "Net Worth" (ADR 0015) -- what accounting calls a Balance Sheet. */
+export interface NetWorth {
   report: string;
   as_of: string;
   assets: ReportSection;
@@ -329,11 +331,11 @@ export const api = {
       if (!r.ok) throw new Error(`could not unlink transfer: ${r.status}`);
     }),
 
-  profitAndLoss: (start: string, end: string) =>
-    request<ProfitAndLoss>(`/reports/profit-and-loss?start=${start}&end=${end}`),
+  incomeAndExpenses: (start: string, end: string) =>
+    request<IncomeAndExpenses>(`/reports/income-and-expenses?start=${start}&end=${end}`),
 
-  balanceSheet: (asOf: string) =>
-    request<BalanceSheet>(`/reports/balance-sheet?as_of=${asOf}`),
+  netWorth: (asOf: string) =>
+    request<NetWorth>(`/reports/net-worth?as_of=${asOf}`),
 
   trialBalance: (asOf: string) =>
     request<TrialBalance>(`/reports/trial-balance?as_of=${asOf}`),
