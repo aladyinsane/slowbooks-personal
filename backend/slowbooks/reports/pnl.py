@@ -61,7 +61,7 @@ def profit_and_loss(
     net_income = total_revenue - total_expenses
 
     return {
-        "report": "Profit and Loss",
+        "report": "Income & Expenses",
         "basis": "accrual",
         "period": {"start": start_iso, "end": end_iso},
         "revenue": {

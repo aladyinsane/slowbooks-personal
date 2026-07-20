@@ -344,14 +344,14 @@ def void_entry(entry_id: int, payload: VoidIn, conn=Depends(get_db)):
 # ---------------------------------------------------------------- reports
 
 
-@router.get("/reports/profit-and-loss", tags=["reports"])
+@router.get("/reports/income-and-expenses", tags=["reports"])
 def get_pnl(start: date, end: date, conn=Depends(get_db)):
     if start > end:
         raise HTTPException(400, "start date must not be after end date")
     return reports.profit_and_loss(conn, start, end)
 
 
-@router.get("/reports/balance-sheet", tags=["reports"])
+@router.get("/reports/net-worth", tags=["reports"])
 def get_balance_sheet(as_of: date, conn=Depends(get_db)):
     return reports.balance_sheet(conn, as_of)
 

@@ -191,11 +191,11 @@ def test_full_import_to_report_flow(client, checking_id):
     posted = client.post(f"/api/imports/{summary['batch_id']}/post").json()
     assert posted == {"posted": 2, "still_pending": 1}
 
-    pnl = client.get("/api/reports/profit-and-loss?start=2026-01-01&end=2026-12-31").json()
+    pnl = client.get("/api/reports/income-and-expenses?start=2026-01-01&end=2026-12-31").json()
     assert pnl["revenue"]["total_minor"] == 250000
     assert pnl["net_income_minor"] == 205000
 
-    sheet = client.get("/api/reports/balance-sheet?as_of=2026-12-31").json()
+    sheet = client.get("/api/reports/net-worth?as_of=2026-12-31").json()
     assert sheet["balanced"]
 
     trial = client.get("/api/reports/trial-balance?as_of=2026-12-31").json()
@@ -212,7 +212,7 @@ def test_bad_csv_returns_400_not_500(client, checking_id):
 
 
 def test_pnl_rejects_backwards_period(client):
-    response = client.get("/api/reports/profit-and-loss?start=2026-12-31&end=2026-01-01")
+    response = client.get("/api/reports/income-and-expenses?start=2026-12-31&end=2026-01-01")
     assert response.status_code == 400
 
 
@@ -312,10 +312,10 @@ def test_transfer_flow_via_api(client):
     # Posting the second statement must not move the money again.
     assert client.post(f"/api/imports/{into['batch_id']}/post").json()["posted"] == 0
 
-    pnl = client.get("/api/reports/profit-and-loss?start=2026-01-01&end=2026-12-31").json()
+    pnl = client.get("/api/reports/income-and-expenses?start=2026-01-01&end=2026-12-31").json()
     assert pnl["net_income_minor"] == 0  # moving your own money is not income or expense
 
-    sheet = client.get("/api/reports/balance-sheet?as_of=2026-12-31").json()
+    sheet = client.get("/api/reports/net-worth?as_of=2026-12-31").json()
     savings_line = next(
         line for line in sheet["assets"]["lines"] if line["name"] == "Savings"
     )
@@ -690,7 +690,7 @@ class TestAccountManagement:
             files={"file": ("chase.csv", CHASE, "text/csv")},
         ).json()
         client.post(f"/api/imports/{upload['batch_id']}/post")
-        pnl_url = "/api/reports/profit-and-loss?start=2026-01-01&end=2026-12-31"
+        pnl_url = "/api/reports/income-and-expenses?start=2026-01-01&end=2026-12-31"
         before = client.get(pnl_url).json()
 
         supplies = next(a for a in client.get("/api/accounts").json() if a["code"] == "6100")
