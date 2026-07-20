@@ -13,66 +13,44 @@ instead of rediscovering them through a confused user.
 
 ---
 
+**A note on this list:** it was written for the original small-business SlowBooks. Several
+entries (invoicing, accounts payable, 1099s, payroll, sales tax, multi-entity, time
+tracking, an accountant-collaboration mode) have no personal-finance analog and are
+removed below rather than kept as dead weight. What's left is what's genuinely still a
+candidate. New personal-finance-specific ideas belong here too — this list isn't
+repopulated yet, just pruned.
+
 ## Strong candidates
 
-### Invoicing / Accounts Receivable
-Most-requested thing we're not doing. Small businesses need to get paid.
-**Why not now:** it's a whole sub-application — templates, delivery, payment links, partial
-payments, dunning, aging. Note Xero *cannot track partial payments*, which suggests there's
-real room here if we do it well.
-
-### Bills / Accounts Payable
-The mirror image. Meaningful for accrual correctness — without A/P, accrual books are
-incomplete.
-
-### Statement of Cash Flows
-The third big-three statement. Owners often care about it more than the P&L; profitable
-businesses die of cash flow. Currently in the v0.4 roadmap.
-
 ### Receipt capture + attachments
-Attach the receipt image to the transaction. IRS substantiation actually lives here.
-OCR is a further step; attachments alone are most of the value and much cheaper.
+Attach the receipt image to the transaction. Useful for returns, warranties,
+reimbursement claims, and substantiating a tax deduction (medical expenses, charitable
+donations) at filing time. OCR is a further step; attachments alone are most of the value
+and much cheaper.
 
 ### Budgeting / forecasting
-Budget vs. actual is a natural extension once the P&L exists and is cheap by comparison.
-
-### 1099 contractor tracking
-Small, annual, painful, and legally required. Real value density for a small annual event.
-
-### Sales tax
-Genuinely hard in the US — thousands of jurisdictions, changing rates, nexus rules. Probably
-means integrating a service (Avalara/TaxJar) rather than building it. Depends heavily on
-whether our users are product sellers.
+Budget vs. actual is a natural extension once the income/expense report exists, and cheap
+by comparison. This is also where the three budgeting approaches noted in
+[personal-finance-landscape.md](../research/personal-finance-landscape.md) (YNAB's
+priority groups, Monarch's Fixed/Variable/Non-Monthly buckets, the 50/30/20 rule) would
+actually get used — they're views over categorized transactions, not a reason to change
+how we categorize.
 
 ---
 
 ## Deliberately deferred (with reasons)
 
-### Payroll
-**No.** Per-jurisdiction tax tables updating continuously; errors have legal consequences.
-This is a company, not a feature. Note that when Intuit ends Desktop support, *payroll tax
-tables freeze* — a good illustration of the ongoing obligation you take on.
-Better path: integrate with Gusto and import the journal entry.
-
-### Inventory / COGS
-FIFO/LIFO/weighted-average is deep, and it touches every report. Xero already does it well.
-Only reconsider if our users turn out to be product businesses.
-
 ### Multi-currency
-FX revaluation touches every report and every balance. Large surface for a US small-business
-audience that mostly doesn't need it.
+FX revaluation touches every report and every balance. Most individuals track a single
+currency; revisit if travel, expat, or foreign-account use turns out to be common among
+our users.
 
 ### Bank feeds (Plaid et al.)
-Tempting — CSV import is friction. **But:** requires an aggregator (per-connection cost),
-credential handling, and a cloud component. That means a subscription and a server, which
-undermines ADR 0001's whole position. Direct conflict with the product thesis; would need a
-very good answer.
-
-### Multi-entity / consolidation
-Those users should buy Xero or QuickBooks. Principle: not for every business.
-
-### Time tracking / project accounting
-FreshBooks owns this segment convincingly.
+Tempting — CSV import is friction, and it's the one feature every mainstream competitor
+(Mint, YNAB, Monarch, Copilot) leads with. **But:** requires an aggregator (per-connection
+cost), credential handling, and a cloud component. That means a subscription and a
+server, which undermines ADR 0001's whole position. Direct conflict with the product
+thesis; would need a very good answer.
 
 ### Mobile app
 Real need (photograph a receipt at the restaurant), but conflicts hard with local-first
@@ -93,7 +71,6 @@ dropped. Two known misses:
 
 Both are only worth solving if real users hit them. A stemmer is a dependency and a
 synonym table is a maintenance burden; better guidance copy is free and helps anyway.
-The CPA review (§5) may be the cheapest source of the right vocabulary.
 
 ### Merge two accounts
 Move all of B's history into A, then retire B. This is what people actually want when they
@@ -150,11 +127,6 @@ Needs real usage data. Blocked on having users.
 
 ## Speculative
 
-### Accountant collaboration mode
-Addresses the strongest counter-argument to the whole product — the CPA is the gatekeeper.
-Needs the sync/sharing story we don't have. A read-only exported bundle might capture most
-of the value for a fraction of the cost. Worth thinking hard about.
-
 ### Local model for rule suggestion
 The door left open in [ADR 0005](../decisions/0005-deterministic-rules-categorization.md).
 The constraint that keeps it honest: the model proposes a **rule**, never categorizes a
@@ -172,5 +144,6 @@ but they're loud and aligned with our values, and it makes the ownership promise
 in a way even the SQLite file doesn't.
 
 ### Guided period-close checklist
-Turn adjusting entries and close into a walkthrough. Very on-brand: taking something
-QuickBooks makes obscure and making it a clear sequence of steps.
+Turn closing a period into a walkthrough — anything unreconciled or uncategorized,
+surfaced before you lock the month. Turns "closing the books" from a bookkeeping ritual
+into a plain end-of-month review.

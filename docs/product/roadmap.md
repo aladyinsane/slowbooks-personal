@@ -70,7 +70,8 @@ What's left of making the numbers *believable* once reconciliation is in.
 - [ ] **Backup nagging + one-click backup.** The biggest risk in ADR 0001 is a user losing
       their only copy. Our headline advantage becomes a liability without this.
 - [ ] **Import undo** (batch-level).
-- [ ] Cash-basis reporting toggle **[needs CPA review]**
+- [ ] Cash-basis reporting toggle — useful for anyone with irregular income (freelance,
+      tips) who wants to see what actually moved, not just what's accrued.
 
 ## v0.3 — Not making humans repeat themselves
 
@@ -84,19 +85,19 @@ Principle 5, systematically.
 - [ ] Recurring transaction detection
 - [ ] Keyboard-first categorization flow
 
-## v0.4 — The accountant gate
+## v0.4 — retired for this fork
 
-The honest counter-argument to this whole product is *"my CPA expects QuickBooks."* Being
-nice to use doesn't beat "my accountant can't open your file." These are survival features,
-not nice-to-haves.
+The original v0.4 here was "the accountant gate": a CPA-review-blocking set of features
+(General Ledger report, journal entry export, Statement of Cash Flows, manual journal
+entries, an adjusting-entries workflow, an accountant-friendly export bundle) built around
+the counter-argument *"my CPA expects QuickBooks."* A personal-finance user doesn't have
+an accountant reviewing their checking account, so this milestone has no analog here and
+is retired rather than renumbered or reworded to fit.
 
-- [ ] General Ledger report
-- [ ] Journal entry export
-- [ ] Statement of Cash Flows (the third big-three statement; owners often care most)
-- [ ] Manual journal entries (accountants will demand this immediately)
-- [ ] Adjusting entries workflow
-- [ ] Accountant-friendly export bundle
-- [ ] **Get a real CPA to review the ledger and reports.** Blocks any real-user release.
+What comes after v0.3 for this fork isn't decided yet. The two open questions in
+[personal-finance-landscape.md](../research/personal-finance-landscape.md#open-questions-for-a-future-adr) —
+a Group layer between Type and Category, and renaming P&L/Balance Sheet to
+Spending/Net Worth — are the most likely seeds for it.
 
 ## v0.5 — Loan statements
 
