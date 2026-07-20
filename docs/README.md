@@ -4,30 +4,37 @@ The development process lives here: what we learned, what we decided, why, and w
 deliberately said no to.
 
 **Note:** this is SlowBooks Personal, a fork of SlowBooks (small-business accounting)
-retargeted for personal finance. The docs below are the original project's research and
-decisions — kept as background, since the underlying engineering (double-entry,
-deterministic rules, local-first SQLite) carried over unchanged. Where a doc talks about
-QuickBooks, clients, or a business's chart of accounts, read it as design history rather
-than a description of this fork's target user.
+retargeted for personal finance. `research/quickbooks-pain-points.md`,
+`research/competitive-landscape.md`, `research/core-features.md`, `research/gaap-notes.md`,
+`product/roadmap.md`, `product/future-features.md`, `review/cpa-review-request.md`, and
+every ADR in `decisions/` are the original project's research and decisions — kept as
+background, since the underlying engineering (double-entry, deterministic rules,
+local-first SQLite) carried over unchanged. Where one of those docs talks about
+QuickBooks, a CPA, or a business's chart of accounts, read it as design history rather
+than a description of this fork's target user. `product/principles.md` and
+`research/personal-finance-landscape.md` are current and describe this fork as it is
+today.
 
 ## Start here
 
-**[research/quickbooks-pain-points.md](research/quickbooks-pain-points.md)** — the most
-important document in the repo. Everything else is downstream of it. QuickBooks is the
-standard *despite* being disliked; understanding exactly why is the whole strategy.
+**[research/personal-finance-landscape.md](research/personal-finance-landscape.md)** —
+how Mint, YNAB, Monarch, and Copilot categorize and present personal finances, and where
+we still read as business software rather than personal. Everything in principles.md
+below is downstream of it.
 
-Then **[product/principles.md](product/principles.md)** — the eight principles those
-complaints produced. They exist to be used in arguments, and each one traces back to a
+Then **[product/principles.md](product/principles.md)** — the eight principles that
+research produced. They exist to be used in arguments, and each one traces back to a
 specific finding.
 
 ## Research
 
 | Doc | What's in it |
 |---|---|
-| [quickbooks-pain-points.md](research/quickbooks-pain-points.md) | Why people dislike QuickBooks, grouped, with the design constraint each one implies — plus the honest counter-argument (the CPA is the gatekeeper) |
-| [competitive-landscape.md](research/competitive-landscape.md) | Xero, Wave, FreshBooks, OneUp. What their gaps tell us — notably that Xero can't do local backups either, and that Wave proves free isn't enough |
-| [core-features.md](research/core-features.md) | What a system like this needs beyond your original ask. Bank reconciliation, transfer detection, and why loan statements are harder than they look |
-| [gaap-notes.md](research/gaap-notes.md) | Double-entry, debits/credits, cash vs. accrual, chart of accounts, period close. Engineering reference — items marked **[CPA REVIEW]** need a professional |
+| [personal-finance-landscape.md](research/personal-finance-landscape.md) | **Current.** How Mint/YNAB/Monarch/Copilot categorize and present data, a terminology translation table (Balance Sheet → Net Worth, etc.), and open questions for a future ADR (a Group layer, report renaming) |
+| [quickbooks-pain-points.md](research/quickbooks-pain-points.md) | *Historical.* Why people dislike QuickBooks, grouped, with the design constraint each one implies — plus the honest counter-argument (the CPA is the gatekeeper) |
+| [competitive-landscape.md](research/competitive-landscape.md) | *Historical.* Xero, Wave, FreshBooks, OneUp. What their gaps tell us — notably that Xero can't do local backups either, and that Wave proves free isn't enough |
+| [core-features.md](research/core-features.md) | *Historical.* What a small-business system like this needs beyond the original ask. Bank reconciliation, transfer detection, and why loan statements are harder than they look |
+| [gaap-notes.md](research/gaap-notes.md) | *Historical.* Double-entry, debits/credits, cash vs. accrual, chart of accounts, period close. Engineering reference — items marked **[CPA REVIEW]** need a professional |
 
 ## Decisions (ADRs)
 
@@ -54,16 +61,16 @@ Numbered, immutable once accepted, superseded rather than edited. Every one has 
 
 | Doc | What's in it |
 |---|---|
-| [principles.md](product/principles.md) | The eight principles, each traced to a complaint, each with a test — plus what we're deliberately *not* |
-| [design.md](product/design.md) | The visual language: calm and document-like, and why. Colour means something or it isn't there |
-| [roadmap.md](product/roadmap.md) | v0.1 through v0.5, sequenced by what proves the thesis |
-| [future-features.md](product/future-features.md) | The parking lot, with reasons. Being on it is not a commitment — this is how we remember ideas instead of accreting them |
+| [principles.md](product/principles.md) | **Current.** The eight principles, each traced to a finding in personal-finance-landscape.md, each with a test — plus what we're deliberately *not* |
+| [design.md](product/design.md) | The visual language: calm and document-like, and why. Colour means something or it isn't there. Written for "a business owner" but the design thesis carries over unchanged |
+| [roadmap.md](product/roadmap.md) | *Historical.* v0.1 through v0.5, sequenced by what proves the original business-accounting thesis |
+| [future-features.md](product/future-features.md) | *Historical.* The parking lot, with reasons — several entries (invoicing, payroll, sales tax) have no personal-finance analog and won't carry forward |
 
 ## Review
 
 | Doc | What's in it |
 |---|---|
-| [cpa-review-request.md](review/cpa-review-request.md) | What we want a CPA to check and how they can check it. Blocks any real-user release |
+| [cpa-review-request.md](review/cpa-review-request.md) | *Historical.* What we wanted a CPA to check on the original small-business ledger — built around owner's-draw/S-corp questions with no personal-finance equivalent |
 
 ## Engineering
 
