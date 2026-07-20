@@ -6,14 +6,16 @@ deliberately said no to.
 **Note:** this is SlowBooks Personal, a fork of SlowBooks (small-business accounting)
 retargeted for personal finance. `research/quickbooks-pain-points.md`,
 `research/competitive-landscape.md`, `research/core-features.md`, `research/gaap-notes.md`,
-`product/roadmap.md`, `product/future-features.md`, `review/cpa-review-request.md`, and
-every ADR in `decisions/` are the original project's research and decisions — kept as
-background, since the underlying engineering (double-entry, deterministic rules,
-local-first SQLite) carried over unchanged. Where one of those docs talks about
-QuickBooks, a CPA, or a business's chart of accounts, read it as design history rather
-than a description of this fork's target user. `product/principles.md` and
-`research/personal-finance-landscape.md` are current and describe this fork as it is
-today.
+`review/cpa-review-request.md`, and every ADR in `decisions/` are the original project's
+research and decisions — kept as background, since the underlying engineering
+(double-entry, deterministic rules, local-first SQLite) carried over unchanged. Where one
+of those docs talks about QuickBooks, a CPA, or a business's chart of accounts, read it as
+design history rather than a description of this fork's target user.
+
+`product/principles.md` and `research/personal-finance-landscape.md` are current and
+describe this fork as it is today. `product/roadmap.md` and `product/future-features.md`
+are partway there — pruned of entries with no personal-finance analog, but not
+repopulated with new personal-finance-specific ideas yet.
 
 ## Start here
 
@@ -63,8 +65,8 @@ Numbered, immutable once accepted, superseded rather than edited. Every one has 
 |---|---|
 | [principles.md](product/principles.md) | **Current.** The eight principles, each traced to a finding in personal-finance-landscape.md, each with a test — plus what we're deliberately *not* |
 | [design.md](product/design.md) | The visual language: calm and document-like, and why. Colour means something or it isn't there. Written for "a business owner" but the design thesis carries over unchanged |
-| [roadmap.md](product/roadmap.md) | *Historical.* v0.1 through v0.5, sequenced by what proves the original business-accounting thesis |
-| [future-features.md](product/future-features.md) | *Historical.* The parking lot, with reasons — several entries (invoicing, payroll, sales tax) have no personal-finance analog and won't carry forward |
+| [roadmap.md](product/roadmap.md) | v0.1–v0.3 build history carries over unchanged; v0.4's business-only "accountant gate" milestone is retired (no analog); what comes next isn't decided |
+| [future-features.md](product/future-features.md) | The parking lot, pruned of business-only entries (invoicing, payroll, sales tax, etc.) — what's left are candidates that still apply |
 
 ## Review
 
