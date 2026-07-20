@@ -27,6 +27,7 @@ from slowbooks import db
 # is one we get to define, and the user discovers the gap at the worst possible moment --
 # when they are already leaving.
 TABLES = [
+    "groups",
     "accounts",
     "journal_entries",
     "journal_lines",

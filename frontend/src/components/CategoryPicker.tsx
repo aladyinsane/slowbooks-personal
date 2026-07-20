@@ -59,7 +59,8 @@ export function CategoryPicker({ accounts, value, onChange, disabled, excludeId 
     // Guidance is searched too: people describe what they did ("paid the card"), not what
     // we named the account.
     const matches = usable.filter((a) => {
-      const haystack = `${a.code} ${a.name} ${a.guidance ?? ""}`.toLowerCase();
+      const haystack =
+        `${a.code} ${a.name} ${a.guidance ?? ""} ${a.group_name ?? ""}`.toLowerCase();
       return terms.every((term) => haystack.includes(term));
     });
 
@@ -168,6 +169,12 @@ export function CategoryPicker({ accounts, value, onChange, disabled, excludeId 
           >
             <span className="picker-name">
               <span className="picker-code">{account.code}</span> {account.name}
+              {/* Secondary label rather than a sectioned/nested list (ADR 0014) --
+                  the keyboard-nav index math above is flat-array based, and grouping
+                  visually without restructuring the option list keeps that intact. */}
+              {account.group_name && (
+                <span className="picker-group"> — {account.group_name}</span>
+              )}
             </span>
             {/* The reason this component exists. */}
             {account.guidance && <span className="picker-hint">{account.guidance}</span>}

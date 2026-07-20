@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 # The balance and immutability invariants live in the database itself rather than in
 # application code. Principle 6: correct by construction, not by user diligence -- and
@@ -30,6 +30,19 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL
 );
 
+-- A group is how accounts are organized for display: "Food & Dining" containing
+-- Groceries and Dining & Takeout. A first-class table rather than a hardcoded map so a
+-- user can rename/reorganize groups the same way ADR 0010 already lets them rename
+-- accounts -- a hardcoded frontend grouping would be a second source of truth that
+-- drifts from the first. See ADR 0014.
+CREATE TABLE IF NOT EXISTS groups (
+    id   INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN
+             ('asset','liability','equity','revenue','expense')),
+    UNIQUE(name, type)
+);
+
 CREATE TABLE IF NOT EXISTS accounts (
     id             INTEGER PRIMARY KEY,
     code           TEXT NOT NULL UNIQUE,
@@ -43,7 +56,11 @@ CREATE TABLE IF NOT EXISTS accounts (
     -- savings, a credit card, a loan. Modeled rather than inferred from the code
     -- prefix -- a user who adds a second checking account should be able to say so
     -- instead of discovering our numbering convention. See ADR 0007.
-    is_statement_account INTEGER NOT NULL DEFAULT 0
+    is_statement_account INTEGER NOT NULL DEFAULT 0,
+    -- Which group this account displays under. Nullable: a user-invented account may
+    -- not have picked one yet, and an ungrouped account is a valid state ("Other"), not
+    -- an error. See ADR 0014.
+    group_id INTEGER REFERENCES groups(id)
 );
 
 CREATE TABLE IF NOT EXISTS journal_entries (
@@ -250,6 +267,26 @@ WHEN (SELECT posted_at FROM journal_entries WHERE id = OLD.entry_id) IS NOT NULL
 BEGIN
     SELECT RAISE(ABORT, 'cannot delete lines from a posted entry');
 END;
+
+-- A group and its accounts must be the same type -- otherwise "Food & Dining" could
+-- silently acquire a revenue account. See ADR 0014.
+DROP TRIGGER IF EXISTS trg_account_group_type_matches_insert;
+CREATE TRIGGER trg_account_group_type_matches_insert
+BEFORE INSERT ON accounts
+WHEN NEW.group_id IS NOT NULL
+     AND NEW.type <> (SELECT type FROM groups WHERE id = NEW.group_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a group and its accounts must be the same type');
+END;
+
+DROP TRIGGER IF EXISTS trg_account_group_type_matches_update;
+CREATE TRIGGER trg_account_group_type_matches_update
+BEFORE UPDATE ON accounts
+WHEN NEW.group_id IS NOT NULL
+     AND NEW.type <> (SELECT type FROM groups WHERE id = NEW.group_id)
+BEGIN
+    SELECT RAISE(ABORT, 'a group and its accounts must be the same type');
+END;
 """
 
 
@@ -297,9 +334,16 @@ def initialize(conn: sqlite3.Connection) -> None:
         (str(SCHEMA_VERSION),),
     )
 
-    from slowbooks import accounts, categorize
+    from slowbooks import accounts, categorize, groups
 
     if conn.execute("SELECT COUNT(*) AS n FROM accounts").fetchone()["n"] == 0:
+        # Gated separately from accounts: a migrated-but-empty book (an old schema
+        # version with no accounts yet -- unusual in practice, but exactly what the
+        # migration test fixtures construct) may already have had groups seeded by the
+        # v6 migration step above, and seeding them again would collide on the
+        # (name, type) UNIQUE constraint.
+        if conn.execute("SELECT COUNT(*) AS n FROM groups").fetchone()["n"] == 0:
+            groups.seed_default_groups(conn)
         accounts.seed_default_chart(conn)
         categorize.seed_starter_rules(conn)
 
@@ -375,6 +419,50 @@ def _migrate(conn: sqlite3.Connection, from_version: int | None) -> None:
         # is no column to add, so nothing to ALTER. Listed anyway so the version ladder
         # has no silent gaps.
         pass
+
+    if from_version < 6:
+        # ADR 0014: categories get a Group layer. Unlike period_closes/reconciliations
+        # (new tables that start empty), groups needs to be pre-seeded even on an
+        # existing book -- so, unusually, this block creates the table itself right here
+        # rather than waiting for SCHEMA below. SCHEMA's own `CREATE TABLE IF NOT EXISTS`
+        # then no-ops harmlessly once it runs.
+        tables = {
+            row["name"] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        if "groups" not in tables:
+            conn.execute(
+                """CREATE TABLE groups (
+                    id   INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    type TEXT NOT NULL CHECK (type IN
+                             ('asset','liability','equity','revenue','expense')),
+                    UNIQUE(name, type)
+                )"""
+            )
+            from slowbooks import groups as groups_module
+
+            groups_module.seed_default_groups(conn)
+
+        account_columns = {row["name"] for row in conn.execute("PRAGMA table_info(accounts)")}
+        if "group_id" not in account_columns:
+            # No REFERENCES here either, for the same reason is_statement_account and
+            # suggested_rule_id don't have one: ALTER TABLE ADD COLUMN can't express it.
+            conn.execute("ALTER TABLE accounts ADD COLUMN group_id INTEGER")
+
+            # Backfill from the default chart, the same shape as v3's
+            # is_statement_account backfill. A user-invented account (unknown code)
+            # stays ungrouped rather than guessed at -- the UI shows that as "Other",
+            # not an error.
+            from slowbooks.accounts import CODE_TO_GROUP
+
+            conn.executemany(
+                """UPDATE accounts SET group_id =
+                       (SELECT id FROM groups WHERE name = ? AND type = accounts.type)
+                     WHERE code = ?""",
+                [(group_name, code) for code, group_name in CODE_TO_GROUP.items()],
+            )
 
     if from_version > SCHEMA_VERSION:
         raise RuntimeError(
