@@ -1,0 +1,44 @@
+[project]
+name = "slowbooks"
+version = "0.1.0"
+description = "Simple accounting software that doesn't suck to use"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.12",  # file uploads
+    "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",   # FastAPI TestClient
+    "ruff>=0.7",
+]
+# Only needed to produce the double-click desktop build (ADR 0013). Kept out of `dev`
+# so CI and everyday work don't pull a heavy toolchain they never use.
+build = [
+    "pyinstaller>=6.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["slowbooks*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 96
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# B008 flags function calls in default arguments, which is exactly how FastAPI's
+# Depends() is meant to be written. A false positive for this framework, not a smell.
+ignore = ["B008"]

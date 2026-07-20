@@ -1,0 +1,977 @@
+/*
+ * SlowBooks — calm, document-like.
+ *
+ * The reasoning lives in docs/product/design.md; this file is the source of truth for
+ * values. Two ideas run through everything:
+ *
+ *   1. This is a document, not an app. Hairline rules and typography, not cards and
+ *      shadows. Financial records earn trust by looking like records.
+ *   2. Colour means something or it isn't here. The palette is ink on paper; every hue
+ *      that survives is doing semantic work.
+ */
+
+/* ---------------------------------------------------------------- tokens */
+
+:root {
+  /* Ink: three weights of the same idea, not three colours.
+     --ink-muted is darker than it looks like it wants to be: labels are 11px, which is
+     normal text for contrast purposes, so it needs 4.5:1 on --paper. The prettier
+     #7d7970 measured 4.26 and failed. Checked, not eyeballed. */
+  --ink: #1f1d1a;
+  --ink-soft: #4a4741;
+  --ink-muted: #736f66;
+
+  /* Paper, very slightly warm. Pure #fff is a screen; paper is a document. */
+  --paper: #fdfdfb;
+  --paper-sunk: #f7f6f3;
+  --paper-raised: #ffffff;
+
+  /* Hairlines are the main structural device, so there are two weights of them. */
+  --rule: #e6e3dd;
+  --rule-strong: #cfcbc3;
+
+  /* Semantic. Not "good" and "bad" -- an expense is not a failure. */
+  --accent: #2f5ea8;
+  --accent-soft: #eef3fb;
+  --positive: #2e6b46;
+  --positive-soft: #eff6f1;
+  --negative: #a33a32;
+  --negative-soft: #fbf0ef;
+  --caution: #8a6116;
+  --caution-soft: #fdf6e6;
+  --caution-rule: #d9bc7a;
+
+  --focus: #2f5ea8;
+
+  /* 4px base. Anything not on the scale is a mistake, not a nuance. */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+
+  --measure: 42rem;   /* prose we actually want read */
+  --radius: 4px;      /* barely there; enough to not look like a 1998 table */
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+  color-scheme: light dark;
+}
+
+/*
+ * Dark mode is a real reversal, not an inverted filter. Paper becomes warm near-black,
+ * and the semantic hues are re-picked for a dark ground -- reusing the light amber would
+ * leave it unreadable, quietly breaking ADR 0006, whose entire point is that the badge
+ * cannot be missed.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eae7e1;
+    --ink-soft: #b6b2aa;
+    --ink-muted: #8a867e;
+
+    --paper: #1a1917;
+    --paper-sunk: #211f1d;
+    --paper-raised: #232120;
+
+    --rule: #34312d;
+    --rule-strong: #4a4640;
+
+    --accent: #8fb3e8;
+    --accent-soft: #1e2734;
+    --positive: #7cc79a;
+    --positive-soft: #17251c;
+    --negative: #e0837a;
+    --negative-soft: #2a1b19;
+    --caution: #e0b969;
+    --caution-soft: #2a2317;
+    --caution-rule: #6b5626;
+
+    --focus: #8fb3e8;
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* Keyboard-heavy task. Hiding focus to look tidier would be choosing our aesthetics
+   over someone's ability to use the thing. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+h1, h2, h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: var(--paper-sunk);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* Money, everywhere. Columns of figures that don't align are easy to misread, and
+   misreading is the failure this product exists to reduce. */
+.num,
+.figure,
+td.date,
+.status-table td,
+.warn-box li {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+main {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: var(--s6) var(--s5) var(--s7);
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--rule-strong);
+  margin-bottom: var(--s6);
+}
+
+header h1 {
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  margin: var(--s1) 0 0;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}
+
+.ledger-state {
+  margin: 0;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.ledger-state .ok,
+.ledger-state .bad { font-weight: 600; }
+
+/* A section is separated by space and a hairline, never by a box. A border is a claim
+   that things inside belong together; usually that claim is false. */
+section {
+  margin-bottom: var(--s7);
+}
+
+section > h2 {
+  font-size: 0.9375rem;
+  margin-bottom: var(--s1);
+}
+
+.lede {
+  margin: 0 0 var(--s4);
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+  max-width: var(--measure);
+}
+
+/* Labels are small, quiet, and get out of the way. The value is the point. */
+.label,
+.status-table th,
+.grid th,
+.result dt,
+.export-options dt {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+/* ---------------------------------------------------------------- controls */
+
+button {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--ink-muted); }
+button:disabled { opacity: 0.45; cursor: default; }
+
+/* One primary action per view. If two things are primary, neither is. */
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+@media (prefers-color-scheme: dark) {
+  button.primary { color: var(--paper); }
+}
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0 0 0 var(--s2);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+button.link:hover { color: var(--accent); }
+
+select,
+input[type="text"],
+input[type="date"],
+input[type="file"] {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- import */
+
+.import-section { margin-bottom: var(--s6); }
+
+.import {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.8125rem;
+}
+.import label { color: var(--ink-muted); font-weight: 500; }
+
+.summary {
+  margin: var(--s4) 0 0;
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+}
+
+.posted {
+  margin: var(--s4) 0 0;
+  padding-left: var(--s3);
+  border-left: 2px solid var(--positive);
+  color: var(--positive);
+  font-size: 0.8125rem;
+}
+
+.status { border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--s4); }
+.bad-box {
+  border-color: var(--negative);
+  background: var(--negative-soft);
+  color: var(--negative);
+  margin-bottom: var(--s4);
+  font-size: 0.8125rem;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius);
+}
+.ok  { color: var(--positive); }
+.bad { color: var(--negative); }
+.muted { color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------- grid */
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--s4);
+  font-size: 0.8125rem;
+}
+.grid th {
+  text-align: left;
+  padding: 0 var(--s3) var(--s2) 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.grid td {
+  padding: var(--s2) var(--s3) var(--s2) 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+}
+.grid .num { text-align: right; white-space: nowrap; padding-right: var(--s4); }
+.grid .date { white-space: nowrap; color: var(--ink-muted); }
+.grid .desc {
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grid .out { color: var(--negative); }
+.grid .in  { color: var(--positive); }
+.grid tr.dupe { color: var(--ink-muted); }
+.grid tr.transfer { background: var(--paper-sunk); }
+.grid select { max-width: 16rem; }
+
+.transfer-cell { font-size: 0.8125rem; }
+.transfer-cell .note { color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------- badges */
+
+/* Text as well as colour, always: colour is never the only signal. */
+.badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+/* Amber is the colour of "we're not sure" -- and it appears nowhere else, which is what
+   makes it readable at a glance (ADR 0006). */
+.badge-starter  { background: var(--caution-soft); border-color: var(--caution-rule); color: var(--caution); }
+.badge-yours    { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.badge-transfer { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.badge-review   { background: var(--paper-sunk); border-color: var(--rule-strong); color: var(--ink-muted); }
+.badge-dupe     { background: var(--paper-sunk); border-color: var(--rule-strong); color: var(--ink-muted); margin-left: var(--s2); }
+
+/* ---------------------------------------------------------------- starter-rule banner */
+
+/* A decision. Decisions get room -- whitespace is what makes someone slow down. */
+.banner {
+  border: 1px solid var(--caution-rule);
+  border-left-width: 3px;
+  background: var(--caution-soft);
+  border-radius: var(--radius);
+  padding: var(--s4) var(--s5);
+  margin: var(--s4) 0;
+  max-width: var(--measure);
+}
+.banner h2 { font-size: 0.9375rem; margin-bottom: var(--s2); }
+.banner p { margin: 0 0 var(--s3); font-size: 0.8125rem; line-height: 1.55; color: var(--ink-soft); }
+.banner .warn { color: var(--caution); }
+.banner code { background: rgba(0, 0, 0, 0.05); }
+.banner-actions { display: flex; gap: var(--s2); margin-top: var(--s4); }
+
+/* ---------------------------------------------------------------- reconciliation */
+
+.status-table {
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  margin-bottom: var(--s5);
+  min-width: 26rem;
+}
+.status-table th {
+  text-align: left;
+  padding: 0 var(--s5) var(--s2) 0;
+  border-bottom: 1px solid var(--rule-strong);
+}
+.status-table td {
+  padding: var(--s2) var(--s5) var(--s2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.reconcile-form {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+.reconcile-form label { color: var(--ink-muted); font-weight: 500; }
+.reconcile-form input[type="text"] {
+  width: 7rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.field-error { color: var(--negative); font-size: 0.75rem; }
+
+.result {
+  margin-top: var(--s4);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  max-width: var(--measure);
+}
+.result.match { border-left-color: var(--positive); background: var(--positive-soft); }
+.result.gap   { border-left-color: var(--caution-rule); background: var(--caution-soft); }
+.result dl { display: flex; gap: var(--s6); margin: 0 0 var(--s4); }
+.result div { display: flex; flex-direction: column; }
+.result dd {
+  margin: var(--s1) 0 0;
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.result p { margin: 0 0 var(--s3); font-size: 0.8125rem; line-height: 1.55; color: var(--ink-soft); }
+.result .hint { color: var(--caution); margin-bottom: 0; }
+
+.warn-box {
+  border: 1px solid var(--caution-rule);
+  border-left-width: 3px;
+  background: var(--caution-soft);
+  border-radius: var(--radius);
+  padding: var(--s3) var(--s4);
+  margin-bottom: var(--s5);
+  font-size: 0.8125rem;
+  max-width: var(--measure);
+}
+.warn-box ul { margin: var(--s2) 0; padding-left: var(--s4); }
+.warn-box p { margin: 0; color: var(--caution); }
+
+/* ---------------------------------------------------------------- export */
+
+.export > p {
+  margin: 0 0 var(--s4);
+  color: var(--ink-soft);
+  font-size: 0.875rem;
+  max-width: var(--measure);
+}
+.export-options { margin: 0; display: grid; gap: var(--s4); }
+.export-options > div { max-width: var(--measure); }
+.export-options dt { margin-bottom: var(--s1); text-transform: none; letter-spacing: 0; font-size: 0.8125rem; }
+.export-options dt a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.export-options dt a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.export-options dd { margin: 0; color: var(--ink-muted); font-size: 0.8125rem; line-height: 1.5; }
+
+/* ---------------------------------------------------------------- footer */
+
+footer {
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule-strong);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+/* Someone doing their books at night, or on a laptop on a train. */
+@media (max-width: 40rem) {
+  main { padding: var(--s4) var(--s3) var(--s6); }
+  header { flex-direction: column; gap: var(--s1); }
+  .grid .desc { max-width: 10rem; }
+  .result dl { flex-direction: column; gap: var(--s3); }
+}
+
+/* Bookkeeping is bulk repetition: a 200ms transition times 200 rows is 40 seconds of
+   someone's life (principle 3). Nothing in the bulk path animates. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------------------------------------------------------------- category picker */
+
+/* Replaces a native select: 36 accounts is too many to scan, and the guidance has to be
+   readable at the moment of choosing rather than in a help page nobody opens. */
+.picker-value {
+  font-size: 0.8125rem;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  text-align: left;
+  min-width: 15rem;
+  max-width: 17rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker-empty { color: var(--ink-muted); font-style: italic; }
+
+.picker { position: relative; min-width: 15rem; max-width: 17rem; }
+
+.picker-search {
+  width: 100%;
+  font-size: 0.8125rem;
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.picker-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  max-height: 19rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--s1) 0;
+  list-style: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  /* The one shadow in the product. A dropdown genuinely floats above the page, so this
+     is the exception that proves the rule rather than decoration. */
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.13);
+}
+
+.picker-option { padding: var(--s2) var(--s3); cursor: pointer; }
+.picker-option.active { background: var(--accent-soft); }
+.picker-name { display: block; font-size: 0.8125rem; }
+.picker-code { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+/* The reason this component exists. */
+.picker-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  line-height: 1.4;
+  margin-top: 1px;
+}
+.picker-none { padding: var(--s2) var(--s3); font-size: 0.8125rem; color: var(--ink-muted); }
+
+/* ---------------------------------------------------------------- commit bar */
+
+.commit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule-strong);
+}
+.commit-bar p { margin: 0; font-size: 0.8125rem; }
+.commit-bar .note { color: var(--ink-muted); font-weight: 400; }
+
+.grid tr.row-posted { color: var(--ink-muted); }
+.badge-posted { background: var(--positive-soft); border-color: var(--positive); color: var(--positive); }
+
+/* ---------------------------------------------------------------- categories (ADR 0010) */
+
+.accounts-collapsed { margin: var(--s5) 0 var(--s6); }
+button.link.plain { padding: 0; font-size: 0.8125rem; }
+
+.accounts {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--rule-strong);
+}
+.accounts h2 { font-size: 1rem; margin-bottom: var(--s1); }
+
+.account-group { margin-bottom: var(--s5); }
+.account-group h3 {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  padding-bottom: var(--s1);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: var(--s2);
+}
+
+.account-list { list-style: none; margin: 0; padding: 0; }
+.account-list li {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) 1fr auto;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.8125rem;
+}
+/* Hidden accounts stay legible -- they're still in your books, just not in the picker. */
+.hidden-account .account-main,
+.hidden-account .account-hint { color: var(--ink-muted); }
+
+.account-main { display: flex; align-items: baseline; gap: var(--s2); }
+.account-hint { color: var(--ink-muted); font-size: 0.75rem; line-height: 1.4; }
+.account-actions { display: flex; gap: var(--s1); white-space: nowrap; }
+
+.account-edit,
+.account-add {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+.account-edit input,
+.account-add input { font-size: 0.8125rem; min-width: 11rem; }
+.account-edit input.wide,
+.account-add input.wide { flex: 1; min-width: 16rem; }
+
+.account-add {
+  padding: var(--s3) 0 0;
+  border-top: 1px solid var(--rule-strong);
+}
+.account-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule-strong);
+}
+
+@media (max-width: 40rem) {
+  .account-list li { grid-template-columns: 1fr; gap: var(--s1); }
+}
+
+/* ---------------------------------------------------------------- closing (ADR 0011) */
+
+.close-period {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--rule-strong);
+}
+.close-period h2 { font-size: 1rem; margin-bottom: var(--s1); }
+
+.close-state {
+  margin: 0 0 var(--s4);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.close-form {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+.close-form label { color: var(--ink-muted); font-weight: 500; }
+.close-form input.wide { flex: 1; min-width: 14rem; max-width: 22rem; }
+
+.close-warnings {
+  margin: 0 0 var(--s3);
+  padding-left: var(--s4);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.close-history {
+  margin-top: var(--s4);
+  font-size: 0.8125rem;
+}
+.close-history summary { color: var(--ink-muted); cursor: pointer; }
+.close-history ul {
+  margin: var(--s2) 0 0;
+  padding-left: var(--s4);
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- reports (ADR 0012) */
+
+.reports {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--rule-strong);
+}
+.reports h2 { font-size: 1rem; margin-bottom: var(--s1); }
+
+.report-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--rule-strong);
+}
+.tabs { display: flex; gap: var(--s1); }
+.tabs button {
+  font-size: 0.8125rem;
+  padding: var(--s1) var(--s3);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink-muted);
+  border-radius: var(--radius);
+}
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--rule-strong);
+  background: var(--paper-raised);
+}
+.report-dates {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 0.8125rem;
+}
+.report-dates label { color: var(--ink-muted); }
+
+/* A statement, not a data grid: no vertical rules, generous rows, figures aligned. */
+.report {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--s3);
+  font-size: 0.8125rem;
+  max-width: 44rem;
+}
+.report td, .report th { padding: var(--s2) var(--s2) var(--s2) 0; text-align: left; }
+.report .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.report .section-head th {
+  padding-top: var(--s4);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule);
+}
+.report .section-total td {
+  border-top: 1px solid var(--rule);
+  font-weight: 600;
+}
+.report .subtotal td {
+  border-top: 1px solid var(--rule);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+/* The number people actually came for. */
+.report .report-bottom-line td {
+  border-top: 2px solid var(--rule-strong);
+  border-bottom: 2px solid var(--rule-strong);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  padding-top: var(--s3);
+  padding-bottom: var(--s3);
+}
+.balance-check { font-size: 0.75rem; padding-top: var(--s3) !important; }
+
+/* Every figure is a door (principle 8). */
+button.drill {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 3px;
+}
+button.drill:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.computed { color: var(--ink-soft); font-style: italic; }
+
+/* ---------------------------------------------------------------- register (ADR 0012) */
+
+.register {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--rule-strong);
+}
+.register-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.register-head h2 { font-size: 1rem; }
+
+.register-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.register-filters label { color: var(--ink-muted); }
+.register-filters input[type="text"] { min-width: 12rem; }
+
+.register-empty { font-size: 0.8125rem; padding: var(--s4) 0; }
+.register-table { max-width: none; }
+.register-table .register-other { font-size: 0.75rem; max-width: 14rem; }
+.register-table .register-balance { font-weight: 600; }
+.register-opening td { color: var(--ink-muted); border-bottom: 1px solid var(--rule); }
+.register-table tfoot td {
+  border-top: 2px solid var(--rule-strong);
+  padding-top: var(--s2);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+.tick { color: var(--positive); }
+.register-note { font-size: 0.75rem; margin-top: var(--s3); max-width: var(--measure); }
+
+/* Closing has to leave a way back in, or "close" means "hide forever". */
+.register-closed { margin: var(--s5) 0 var(--s6); }
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  margin-top: var(--s3);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.pager button { font-size: 0.75rem; padding: var(--s1) var(--s3); }
+
+/* ---------------------------------------------------------------- print
+ *
+ * The brief asked for a P&L and a Balance Sheet; a statement you can only look at on a
+ * screen is half of one, because the bank, the loan officer and the CPA all want paper.
+ * Printing collapses the whole single-page app down to just the report in view: a real
+ * statement heading, the figures, and one honest line about where the sheet came from.
+ *
+ * The mechanism leans on structure: .reports is a direct child of <main>, so we can hide
+ * every sibling and reveal only it. Sections added later stay hidden by default, which is
+ * the safe direction to fail.
+ */
+
+/* On-screen affordance. Grouped with the date pickers on the right of the controls. */
+.print-button {
+  font-size: 0.8125rem;
+  padding: var(--s1) var(--s3);
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.print-button:hover { color: var(--ink); border-color: var(--ink-muted); }
+
+/* Present in the DOM, paper-only. Hidden until @media print un-hides them below. */
+.report-print-head,
+.report-print-foot { display: none; }
+
+@media print {
+  /* Ink on paper, literally: drop the warm screen palette so a printer isn't asked to lay
+     down a near-white ground, and darken the muted greys that a page wash would swallow. */
+  :root {
+    --ink: #000;
+    --ink-soft: #000;
+    --ink-muted: #333;
+    --rule: #999;
+    --rule-strong: #000;
+  }
+
+  @page { margin: 1.8cm; }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Reveal only the reports section. Everything else on the page is app chrome that has no
+     business on a financial statement. */
+  main > * { display: none !important; }
+  main > .reports { display: block !important; }
+
+  .reports {
+    margin: 0;
+    padding: 0;
+    border-top: none;
+    color: #000;
+  }
+
+  /* The report's own on-screen furniture goes too: the "Your reports" label, the "click
+     any line" lede, and the whole controls row (tabs, date pickers, the Print button). */
+  #reports-heading,
+  .reports > .lede,
+  .report-controls { display: none !important; }
+
+  /* The statement heading and provenance line, now doing their job. */
+  .report-print-head {
+    display: block;
+    text-align: center;
+    margin-bottom: var(--s5);
+  }
+  .report-print-head .print-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .report-print-head .print-period {
+    font-size: 0.9rem;
+    color: #333;
+    margin-top: var(--s1);
+  }
+  .report-print-foot {
+    display: block;
+    margin-top: var(--s6);
+    padding-top: var(--s2);
+    border-top: 1px solid #999;
+    font-size: 0.7rem;
+    color: #333;
+  }
+
+  /* The figures. Full width, and a shade larger so the sheet reads like a statement. */
+  .report {
+    max-width: none;
+    width: 100%;
+    font-size: 10.5pt;
+    color: #000;
+  }
+  /* Don't strand a section heading at the foot of a page, or split a total off its rule. */
+  .report tr,
+  .report .section-total,
+  .report .subtotal,
+  .report .report-bottom-line { break-inside: avoid; }
+  .report .section-head th { break-after: avoid; }
+
+  /* A figure is still a door on screen; on paper you can't click it, so it's just text. */
+  button.drill {
+    text-decoration: none;
+    color: #000;
+    cursor: default;
+  }
+  /* Sign already carries the meaning ("-$120.00"); don't ask a mono printer for hue. */
+  .report .num.in,
+  .report .num.out { color: #000; }
+}
+
+/* ------------------------------------------------------- where your books live (ADR 0013) */
+
+.book-location {
+  margin: 0 0 var(--s5);
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  max-width: var(--measure);
+}
+.book-location .label { margin: 0 0 var(--s1); }
+.book-path {
+  margin: 0 0 var(--s2);
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+/* A filesystem path can be long; let it wrap rather than push the panel wide. */
+.book-path code { font-size: 0.8125rem; word-break: break-all; }
+.book-location .muted { margin: 0; font-size: 0.75rem; }
