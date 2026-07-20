@@ -18,8 +18,8 @@ from slowbooks import deps
 from slowbooks.main import app
 
 CHASE = """Transaction Date,Post Date,Description,Category,Type,Amount
-01/15/2026,01/16/2026,STAPLES 00123 SEATTLE WA,Shopping,Sale,-450.00
-01/22/2026,01/23/2026,STRIPE TRANSFER,Income,Deposit,2500.00
+01/15/2026,01/16/2026,KROGER 00123 SEATTLE WA,Shopping,Sale,-450.00
+01/22/2026,01/23/2026,PAYROLL DEPOSIT,Income,Deposit,2500.00
 01/28/2026,01/29/2026,ZZQQ MYSTERY VENDOR,Other,Sale,-99.00
 """
 
@@ -123,7 +123,7 @@ def test_concurrent_writes_do_not_corrupt_the_ledger(tmp_path, monkeypatch):
     )["id"]
 
     rows = "\n".join(
-        f"2026-01-{day:02d},STAPLES {day:05d},-{day}.00" for day in range(1, 13)
+        f"2026-01-{day:02d},KROGER {day:05d},-{day}.00" for day in range(1, 13)
     )
     batch = client.post(
         f"/api/imports?account_id={checking}",
@@ -163,7 +163,7 @@ def test_default_chart_is_seeded(client):
 
 
 def test_new_account_must_fit_its_type_range(client):
-    ok = client.post("/api/accounts", json={"code": "6800", "name": "Dues", "type": "expense"})
+    ok = client.post("/api/accounts", json={"code": "6975", "name": "Dues", "type": "expense"})
     assert ok.status_code == 201
 
     # 1200 is an asset code; asking for an expense there is a mistake worth blocking.
@@ -317,7 +317,7 @@ def test_transfer_flow_via_api(client):
 
     sheet = client.get("/api/reports/balance-sheet?as_of=2026-12-31").json()
     savings_line = next(
-        line for line in sheet["assets"]["lines"] if line["name"] == "Business Savings"
+        line for line in sheet["assets"]["lines"] if line["name"] == "Savings"
     )
     assert savings_line["amount_minor"] == 500000  # not 1,000,000
     assert sheet["balanced"]
@@ -431,7 +431,7 @@ class TestReconciliationEndpoints:
         "Date,Description,Amount\n"
         "2026-01-02,OPENING DEPOSIT,10000.00\n"
         "2026-01-10,RENT PAYMENT,-1000.00\n"
-        "2026-01-20,STAPLES 00123,-500.00\n"
+        "2026-01-20,KROGER 00123,-500.00\n"
     )
 
     def _book(self, client, checking_id):
@@ -444,7 +444,7 @@ class TestReconciliationEndpoints:
     def test_status_starts_empty(self, client):
         status = client.get("/api/reconciliation/status").json()
         # Only statement accounts, and nothing reconciled yet.
-        assert {s["account"].split()[0] for s in status} == {"1000", "1010", "2100", "2500"}
+        assert {s["account"].split()[0] for s in status} == {"1000", "1010", "1020", "2100", "2500"}
         assert all(s["reconciled_through"] is None for s in status)
 
     def test_preview_reports_a_match(self, client, checking_id):
@@ -792,7 +792,7 @@ class TestPeriodEndpoints:
         late = client.post(
             f"/api/imports?account_id={checking_id}",
             files={"file": ("late.csv",
-                            "Date,Description,Amount\n2026-01-20,STAPLES 00999,-30.00\n",
+                            "Date,Description,Amount\n2026-01-20,KROGER 00999,-30.00\n",
                             "text/csv")},
         ).json()
         staged = client.get(f"/api/imports/{late['batch_id']}/transactions").json()

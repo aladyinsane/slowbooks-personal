@@ -33,7 +33,7 @@ def books(conn, checking, supplies):
     ledger.post(conn, "2026-01-02", "Owner investment",
                 [ledger.debit(checking, 10_000_00),
                  ledger.credit(accounts.by_code(conn, "3000").id, 10_000_00)])
-    ledger.post(conn, "2026-01-15", "Staples",
+    ledger.post(conn, "2026-01-15", "Groceries",
                 [ledger.debit(supplies, 450_00), ledger.credit(checking, 450_00)])
     return conn
 
@@ -131,7 +131,7 @@ class TestTheLock:
     def test_posting_a_staged_row_into_a_closed_period_is_refused(self, books, checking):
         periods.close(books, "2026-01-31")
         csv_import.import_csv(
-            books, "Date,Description,Amount\n2026-01-20,STAPLES 00999,-30.00\n",
+            books, "Date,Description,Amount\n2026-01-20,KROGER 00999,-30.00\n",
             "late.csv", checking,
         )
         staged_id = books.execute(
@@ -204,7 +204,7 @@ class TestVoidFallsForward:
                             [ledger.debit(supplies, 100_00), ledger.credit(checking, 100_00)])
         periods.close(books, "2026-01-31")
 
-        reversal_id = ledger.void(books, entry, "not a business expense")
+        reversal_id = ledger.void(books, entry, "miscoded")
         reversal = ledger.get(books, reversal_id)
 
         assert reversal.entry_date > "2026-01-31"
@@ -248,7 +248,7 @@ class TestReadiness:
         state = periods.readiness(books, "2026-01-31")
         assert not state["is_tidy"]
         names = {a["account"] for a in state["unreconciled_accounts"]}
-        assert any("Business Checking" in n for n in names)
+        assert any("Checking" in n for n in names)
 
     def test_empty_accounts_are_not_warned_about(self, books):
         """Found by driving it: the panel listed all four statement accounts as

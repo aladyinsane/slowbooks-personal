@@ -4,7 +4,7 @@ import { api, type ManagedAccount } from "../lib/api";
 /**
  * Managing the chart of accounts (ADR 0010).
  *
- * The default chart is a guess about a business we haven't met — the same objection
+ * The default chart is a guess about a life we haven't seen — the same objection
  * ADR 0006 raised about starter rules, one level up. So it has to be editable, and the
  * editing has to be incapable of breaking posted history.
  *
@@ -125,7 +125,7 @@ export function AccountsPanel() {
     <section className="accounts" aria-labelledby="accounts-heading">
       <h2 id="accounts-heading">Your categories</h2>
       <p className="lede">
-        These started as our guess. Rename anything so it sounds like your business, add
+        These started as our guess. Rename anything so it sounds like your life, add
         what&rsquo;s missing, and hide what you don&rsquo;t use — a shorter list makes
         categorizing faster.
       </p>

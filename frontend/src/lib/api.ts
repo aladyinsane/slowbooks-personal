@@ -90,9 +90,6 @@ export interface ProfitAndLoss {
   basis: string;
   period: { start: string; end: string };
   revenue: ReportSection;
-  cost_of_goods_sold: ReportSection;
-  gross_profit_minor: number;
-  gross_profit: string;
   operating_expenses: ReportSection;
   net_income_minor: number;
   net_income: string;

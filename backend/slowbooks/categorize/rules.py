@@ -35,85 +35,150 @@ class Match:
 # would; this is the mitigation. These are common enough to be safe and are ordinary
 # editable rules, not privileged ones -- a user correction simply outranks them.
 #
+# Order matters where one pattern is a substring of another (e.g. "UBER EATS" contains
+# "UBER"): ties break by insertion order, so the more specific pattern must come first.
+#
 # (pattern, account_code, applies_to)
 STARTER_RULES: list[tuple[str, str, str]] = [
-    # Revenue -- credits only. The same merchant string means opposite things by
-    # direction, which is exactly why applies_to exists: a STRIPE credit is revenue,
-    # a STRIPE debit is a processing fee.
-    ("STRIPE", "4000", "credit"),
-    ("SQUARE", "4000", "credit"),
-    ("SQ *", "4000", "credit"),
-    ("PAYPAL", "4000", "credit"),
-    ("DEPOSIT", "4000", "credit"),
-    # Merchant fees -- debits only
-    ("STRIPE", "6050", "debit"),
-    ("SQUARE", "6050", "debit"),
-    ("PAYPAL", "6050", "debit"),
-    ("MERCHANT FEE", "6050", "debit"),
-    ("SERVICE CHARGE", "6050", "debit"),
-    ("MONTHLY FEE", "6050", "debit"),
-    ("OVERDRAFT", "6050", "debit"),
-    ("ATM FEE", "6050", "debit"),
-    # Software & subscriptions
-    ("ADOBE", "6150", "debit"),
-    ("MICROSOFT", "6150", "debit"),
-    ("GOOGLE", "6150", "debit"),
-    ("DROPBOX", "6150", "debit"),
-    ("SLACK", "6150", "debit"),
-    ("ZOOM", "6150", "debit"),
-    ("GITHUB", "6150", "debit"),
-    ("INTUIT", "6150", "debit"),
-    ("AWS", "6150", "debit"),
-    ("AMAZON WEB SERVICES", "6150", "debit"),
-    # Office supplies
-    ("STAPLES", "6100", "debit"),
-    ("OFFICE DEPOT", "6100", "debit"),
-    ("OFFICEMAX", "6100", "debit"),
-    # Shipping & postage
-    ("USPS", "6600", "debit"),
-    ("FEDEX", "6600", "debit"),
-    ("UPS STORE", "6600", "debit"),
-    ("DHL", "6600", "debit"),
-    ("STAMPS.COM", "6600", "debit"),
-    # Vehicle & fuel
-    ("SHELL", "6500", "debit"),
-    ("CHEVRON", "6500", "debit"),
-    ("EXXON", "6500", "debit"),
-    ("BP ", "6500", "debit"),
-    ("TEXACO", "6500", "debit"),
-    ("SUNOCO", "6500", "debit"),
-    # Telephone & internet
+    # Income -- credits only. The same merchant string means opposite things by
+    # direction, which is exactly why applies_to exists: interest paid *to* you is
+    # income, interest charged *by* a lender is an expense.
+    ("PAYROLL", "4000", "credit"),
+    ("DIRECT DEP", "4000", "credit"),
+    ("INTEREST PAID", "4200", "credit"),
+    ("DIVIDEND", "4200", "credit"),
+    ("TAX REFUND", "4900", "credit"),
+    ("VENMO", "4900", "credit"),
+    ("ZELLE", "4900", "credit"),
+    ("CASH APP", "4900", "credit"),
+    ("REFUND", "4900", "credit"),
+    ("DEPOSIT", "4900", "credit"),
+    # Bank & card fees
+    ("OVERDRAFT", "6700", "debit"),
+    ("ATM FEE", "6700", "debit"),
+    ("MONTHLY FEE", "6700", "debit"),
+    ("MAINTENANCE FEE", "6700", "debit"),
+    ("SERVICE CHARGE", "6700", "debit"),
+    # Subscriptions & memberships -- specific plans before their parent brand
+    ("AMAZON PRIME", "6500", "debit"),
+    ("NETFLIX", "6500", "debit"),
+    ("SPOTIFY", "6500", "debit"),
+    ("HULU", "6500", "debit"),
+    ("DISNEY+", "6500", "debit"),
+    ("DISNEY PLUS", "6500", "debit"),
+    ("YOUTUBE PREMIUM", "6500", "debit"),
+    ("APPLE.COM/BILL", "6500", "debit"),
+    ("ICLOUD", "6500", "debit"),
+    ("ADOBE", "6500", "debit"),
+    ("MICROSOFT", "6500", "debit"),
+    ("DROPBOX", "6500", "debit"),
+    ("AUDIBLE", "6500", "debit"),
+    ("PATREON", "6500", "debit"),
+    # Groceries
+    ("KROGER", "6100", "debit"),
+    ("SAFEWAY", "6100", "debit"),
+    ("WHOLE FOODS", "6100", "debit"),
+    ("TRADER JOE", "6100", "debit"),
+    ("ALDI", "6100", "debit"),
+    ("PUBLIX", "6100", "debit"),
+    ("COSTCO", "6100", "debit"),
+    ("WEGMANS", "6100", "debit"),
+    ("GIANT FOOD", "6100", "debit"),
+    ("STOP & SHOP", "6100", "debit"),
+    ("HARRIS TEETER", "6100", "debit"),
+    # Dining & takeout -- delivery apps before "UBER" alone
+    ("UBER EATS", "6150", "debit"),
+    ("DOORDASH", "6150", "debit"),
+    ("GRUBHUB", "6150", "debit"),
+    ("STARBUCKS", "6150", "debit"),
+    ("MCDONALD", "6150", "debit"),
+    ("CHIPOTLE", "6150", "debit"),
+    ("CHICK-FIL-A", "6150", "debit"),
+    ("DUNKIN", "6150", "debit"),
+    ("PANERA", "6150", "debit"),
+    # Transportation & fuel
+    ("UBER", "6200", "debit"),
+    ("LYFT", "6200", "debit"),
+    ("SHELL", "6200", "debit"),
+    ("CHEVRON", "6200", "debit"),
+    ("EXXON", "6200", "debit"),
+    ("BP ", "6200", "debit"),
+    ("TEXACO", "6200", "debit"),
+    ("SUNOCO", "6200", "debit"),
+    ("PARKING", "6200", "debit"),
+    ("TOLL", "6200", "debit"),
+    # Auto maintenance & repairs
+    ("JIFFY LUBE", "6250", "debit"),
+    ("AUTOZONE", "6250", "debit"),
+    ("MIDAS", "6250", "debit"),
+    ("FIRESTONE", "6250", "debit"),
+    # Insurance
+    ("GEICO", "6300", "debit"),
+    ("STATE FARM", "6300", "debit"),
+    ("PROGRESSIVE", "6300", "debit"),
+    ("ALLSTATE", "6300", "debit"),
+    ("INSURANCE", "6300", "debit"),
+    # Healthcare & medical
+    ("CVS", "6350", "debit"),
+    ("WALGREENS", "6350", "debit"),
+    ("RITE AID", "6350", "debit"),
+    # Personal care & fitness
+    ("PLANET FITNESS", "6400", "debit"),
+    ("LA FITNESS", "6400", "debit"),
+    ("PELOTON", "6400", "debit"),
+    # Entertainment
+    ("AMC THEATRE", "6450", "debit"),
+    ("STEAM GAMES", "6450", "debit"),
+    ("PLAYSTATION", "6450", "debit"),
+    ("XBOX", "6450", "debit"),
+    ("TICKETMASTER", "6450", "debit"),
+    # Shopping -- generic "AMAZON" after the specific subscription patterns above
+    ("AMAZON", "6550", "debit"),
+    ("TARGET", "6550", "debit"),
+    ("WALMART", "6550", "debit"),
+    ("BEST BUY", "6550", "debit"),
+    ("HOME DEPOT", "6550", "debit"),
+    ("LOWES", "6550", "debit"),
+    ("TJ MAXX", "6550", "debit"),
+    ("MARSHALLS", "6550", "debit"),
+    # Travel
+    ("DELTA AIR", "6600", "debit"),
+    ("UNITED AIRLINES", "6600", "debit"),
+    ("AMERICAN AIR", "6600", "debit"),
+    ("SOUTHWEST AIR", "6600", "debit"),
+    ("MARRIOTT", "6600", "debit"),
+    ("HILTON", "6600", "debit"),
+    ("AIRBNB", "6600", "debit"),
+    ("EXPEDIA", "6600", "debit"),
+    # Phone & internet
     ("VERIZON", "6650", "debit"),
     ("AT&T", "6650", "debit"),
     ("T-MOBILE", "6650", "debit"),
     ("COMCAST", "6650", "debit"),
     ("SPECTRUM", "6650", "debit"),
-    # Utilities
-    ("ELECTRIC", "6250", "debit"),
-    ("GAS COMPANY", "6250", "debit"),
-    ("WATER DEPT", "6250", "debit"),
-    # Travel
-    ("DELTA AIR", "6400", "debit"),
-    ("UNITED AIRLINES", "6400", "debit"),
-    ("AMERICAN AIR", "6400", "debit"),
-    ("SOUTHWEST AIR", "6400", "debit"),
-    ("MARRIOTT", "6400", "debit"),
-    ("HILTON", "6400", "debit"),
-    ("AIRBNB", "6400", "debit"),
-    ("UBER", "6400", "debit"),
-    ("LYFT", "6400", "debit"),
-    # Advertising
-    ("FACEBOOK ADS", "6000", "debit"),
-    ("GOOGLE ADS", "6000", "debit"),
-    ("META PLATFORMS", "6000", "debit"),
-    ("MAILCHIMP", "6000", "debit"),
-    # Interest
-    ("INTEREST CHARGE", "6700", "debit"),
-    ("INTEREST PAID", "6700", "debit"),
-    # Insurance
-    ("INSURANCE", "6300", "debit"),
-    # Rent
-    ("RENT", "6200", "debit"),
+    ("XFINITY", "6650", "debit"),
+    # Interest expense
+    ("INTEREST CHARGE", "6750", "debit"),
+    ("INTEREST CHARGED", "6750", "debit"),
+    # Gifts & donations -- also where a P2P app lands when *you* sent the money; the
+    # same app credited means someone paid *you*, which is Other Income above.
+    ("GOFUNDME", "6800", "debit"),
+    ("DONATION", "6800", "debit"),
+    ("RED CROSS", "6800", "debit"),
+    ("VENMO", "6800", "debit"),
+    ("ZELLE", "6800", "debit"),
+    ("CASH APP", "6800", "debit"),
+    # Taxes
+    ("IRS", "6850", "debit"),
+    ("PROPERTY TAX", "6850", "debit"),
+    # Utilities -- checked after the more specific patterns above
+    ("ELECTRIC", "6050", "debit"),
+    ("GAS COMPANY", "6050", "debit"),
+    ("WATER DEPT", "6050", "debit"),
+    ("WASTE MANAGEMENT", "6050", "debit"),
+    # Rent & mortgage
+    ("MORTGAGE", "6000", "debit"),
+    ("RENT", "6000", "debit"),
 ]
 
 
@@ -225,7 +290,7 @@ def apply_rules_to_batch(conn: sqlite3.Connection, batch_id: int) -> dict[str, i
     """Categorize a batch's pending rows.
 
     Returns {"matched": n, "from_starter_rules": n}. The split matters: starter-rule
-    suggestions are guesses we shipped about a business we have never seen, and ADR 0006
+    suggestions are guesses we shipped about a life we have never seen, and ADR 0006
     requires the caller be able to say so out loud.
 
     Only fills in *suggestions*. Nothing posts, and the user can override every one.

@@ -1,6 +1,6 @@
 """Profit & Loss (Income Statement).
 
-Revenue - COGS - Expenses over a period. The report the owner actually reads.
+Income - Expenses over a period. The report you actually read.
 
 Derived live from journal_lines, never stored, so it cannot disagree with the ledger.
 See docs/engineering/architecture.md.
@@ -42,25 +42,23 @@ def profit_and_loss(
         (start_iso, end_iso),
     ).fetchall()
 
+    # No cost-of-goods-sold section: that split exists in business accounting to make
+    # gross profit mean something for a business reselling goods. A household has no
+    # goods it resells, so every expense account is just an expense.
     revenue: list[dict[str, object]] = []
-    cogs: list[dict[str, object]] = []
     expenses: list[dict[str, object]] = []
 
     for row in rows:
         if row["type"] == "revenue":
             # Credit balance is negative internally; revenue reads positive.
             revenue.append(_line(row["code"], row["name"], -row["balance"]))
-        elif row["code"].startswith("5"):
-            cogs.append(_line(row["code"], row["name"], row["balance"]))
         else:
             expenses.append(_line(row["code"], row["name"], row["balance"]))
 
     total_revenue = sum(int(item["amount_minor"]) for item in revenue)
-    total_cogs = sum(int(item["amount_minor"]) for item in cogs)
     total_expenses = sum(int(item["amount_minor"]) for item in expenses)
 
-    gross_profit = total_revenue - total_cogs
-    net_income = gross_profit - total_expenses
+    net_income = total_revenue - total_expenses
 
     return {
         "report": "Profit and Loss",
@@ -71,13 +69,6 @@ def profit_and_loss(
             "total_minor": total_revenue,
             "total": money.format(total_revenue),
         },
-        "cost_of_goods_sold": {
-            "lines": cogs,
-            "total_minor": total_cogs,
-            "total": money.format(total_cogs),
-        },
-        "gross_profit_minor": gross_profit,
-        "gross_profit": money.format(gross_profit),
         "operating_expenses": {
             "lines": expenses,
             "total_minor": total_expenses,

@@ -25,14 +25,14 @@ def card(conn):
 
 @pytest.fixture
 def books(conn, checking):
-    """Owner puts in $10,000, spends $1,500. Book balance: $8,500."""
-    ledger.post(conn, "2026-01-02", "Owner investment",
+    """You put in $10,000, spend $1,500. Book balance: $8,500."""
+    ledger.post(conn, "2026-01-02", "Opening balance",
                 [ledger.debit(checking, 10_000_00),
                  ledger.credit(accounts.by_code(conn, "3000").id, 10_000_00)])
     ledger.post(conn, "2026-01-10", "Rent",
-                [ledger.debit(accounts.by_code(conn, "6200").id, 1_000_00),
+                [ledger.debit(accounts.by_code(conn, "6000").id, 1_000_00),
                  ledger.credit(checking, 1_000_00)])
-    ledger.post(conn, "2026-01-20", "Supplies",
+    ledger.post(conn, "2026-01-20", "Groceries",
                 [ledger.debit(accounts.by_code(conn, "6100").id, 500_00),
                  ledger.credit(checking, 500_00)])
     return conn
@@ -78,7 +78,7 @@ class TestPreview:
         assert state.unreconciled_line_count == 3
 
     def test_only_statement_accounts_are_reconcilable(self, books):
-        # You reconcile things that issue statements. Office Supplies does not.
+        # You reconcile things that issue statements. Groceries does not.
         supplies = accounts.by_code(books, "6100").id
         with pytest.raises(
             reconciliation.ReconciliationError, match="does not issue statements"
@@ -165,7 +165,7 @@ class TestReconcile:
     def test_second_period_only_covers_new_lines(self, books, checking):
         first = reconciliation.reconcile(books, checking, "2026-01-31", 8_500_00)
         ledger.post(books, "2026-02-10", "February rent",
-                    [ledger.debit(accounts.by_code(books, "6200").id, 1_000_00),
+                    [ledger.debit(accounts.by_code(books, "6000").id, 1_000_00),
                      ledger.credit(checking, 1_000_00)])
 
         state = reconciliation.preview(books, checking, "2026-02-28", 7_500_00)
@@ -273,7 +273,7 @@ class TestBackdating:
     def test_entries_after_the_statement_are_not_flagged(self, books, checking):
         reconciliation.reconcile(books, checking, "2026-01-31", 8_500_00)
         ledger.post(books, "2026-02-05", "February rent",
-                    [ledger.debit(accounts.by_code(books, "6200").id, 1_000_00),
+                    [ledger.debit(accounts.by_code(books, "6000").id, 1_000_00),
                      ledger.credit(checking, 1_000_00)])
         assert reconciliation.find_backdated_entries(books) == []
 
@@ -306,7 +306,7 @@ class TestRealisticFlow:
             "Date,Description,Amount\n"
             "2026-01-02,OPENING DEPOSIT,10000.00\n"
             "2026-01-10,RENT PAYMENT,-1000.00\n"
-            "2026-01-20,STAPLES 00123,-500.00\n"
+            "2026-01-20,KROGER 00123,-500.00\n"
         )
         from slowbooks import posting
 

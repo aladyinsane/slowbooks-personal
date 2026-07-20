@@ -12,7 +12,7 @@ from slowbooks import accounts, categorize, ledger, posting, reports, settings
 from slowbooks.importing import csv_import
 
 CHASE = """Transaction Date,Post Date,Description,Category,Type,Amount
-01/15/2026,01/16/2026,STAPLES 00123 SEATTLE WA,Shopping,Sale,-450.00
+01/15/2026,01/16/2026,KROGER 00123 SEATTLE WA,Shopping,Sale,-450.00
 01/20/2026,01/21/2026,SHELL OIL 5734,Gas,Sale,-62.50
 01/25/2026,01/26/2026,PAYMENT THANK YOU,Payment,Payment,500.00
 """
@@ -106,16 +106,16 @@ class TestParsing:
 
 class TestFingerprinting:
     def test_identical_transactions_fingerprint_alike(self, checking):
-        a = csv_import.fingerprint(checking, "2026-01-15", -45000, "STAPLES 00123")
-        b = csv_import.fingerprint(checking, "2026-01-15", -45000, "staples  00123 ")
+        a = csv_import.fingerprint(checking, "2026-01-15", -45000, "KROGER 00123")
+        b = csv_import.fingerprint(checking, "2026-01-15", -45000, "kroger  00123 ")
         assert a == b
 
     def test_different_transactions_do_not_collide(self, checking):
-        base = csv_import.fingerprint(checking, "2026-01-15", -45000, "STAPLES")
-        assert base != csv_import.fingerprint(checking, "2026-01-16", -45000, "STAPLES")
-        assert base != csv_import.fingerprint(checking, "2026-01-15", -45001, "STAPLES")
+        base = csv_import.fingerprint(checking, "2026-01-15", -45000, "KROGER")
+        assert base != csv_import.fingerprint(checking, "2026-01-16", -45000, "KROGER")
+        assert base != csv_import.fingerprint(checking, "2026-01-15", -45001, "KROGER")
         assert base != csv_import.fingerprint(checking, "2026-01-15", -45000, "SHELL")
-        assert base != csv_import.fingerprint(checking + 1, "2026-01-15", -45000, "STAPLES")
+        assert base != csv_import.fingerprint(checking + 1, "2026-01-15", -45000, "KROGER")
 
 
 class TestImport:
@@ -134,8 +134,8 @@ class TestImport:
     def test_duplicates_within_one_file_are_flagged(self, conn, checking):
         content = (
             "Date,Description,Amount\n"
-            "2026-01-15,STAPLES,-45.00\n"
-            "2026-01-15,STAPLES,-45.00\n"
+            "2026-01-15,KROGER,-45.00\n"
+            "2026-01-15,KROGER,-45.00\n"
         )
         result = csv_import.import_csv(conn, content, "dupe.csv", checking)
         assert result["duplicates_flagged"] == 1
@@ -147,27 +147,27 @@ class TestImport:
 
 class TestCategorization:
     def test_starter_rules_match_common_merchants(self, conn):
-        match = categorize.match_transaction(conn, "STAPLES 00123 SEATTLE WA", -45000)
+        match = categorize.match_transaction(conn, "KROGER 00123 SEATTLE WA", -45000)
         assert match is not None
         assert match.account_code == "6100"
         # Principle 8: the suggestion must explain itself.
-        assert "STAPLES" in match.reason
+        assert "KROGER" in match.reason
 
     def test_sign_disambiguates_the_same_merchant(self, conn):
-        # A STRIPE credit is revenue; a STRIPE debit is a processing fee.
-        revenue = categorize.match_transaction(conn, "STRIPE TRANSFER", 250000)
-        fee = categorize.match_transaction(conn, "STRIPE FEE", -3000)
-        assert revenue.account_code == "4000"
-        assert fee.account_code == "6050"
+        # A VENMO credit means someone paid you; a VENMO debit means you paid someone.
+        income = categorize.match_transaction(conn, "VENMO PAYMENT FROM ALEX", 250000)
+        sent = categorize.match_transaction(conn, "VENMO PAYMENT TO ALEX", -3000)
+        assert income.account_code == "4900"
+        assert sent.account_code == "6800"
 
     def test_unmatched_transaction_returns_none(self, conn):
         assert categorize.match_transaction(conn, "ZZQQ UNKNOWN VENDOR", -1000) is None
 
     def test_user_rules_outrank_builtins(self, conn):
-        travel = accounts.by_code(conn, "6400").id
+        travel = accounts.by_code(conn, "6600").id
         categorize.create_rule(conn, "SHELL", travel)  # priority 100 beats builtin 500
         match = categorize.match_transaction(conn, "SHELL OIL 5734", -6250)
-        assert match.account_code == "6400"
+        assert match.account_code == "6600"
 
     def test_regex_rules(self, conn):
         supplies = accounts.by_code(conn, "6100").id
@@ -181,19 +181,19 @@ class TestCategorization:
 
     def test_import_auto_categorizes(self, conn, checking):
         result = csv_import.import_csv(conn, CHASE, "chase.csv", checking)
-        assert result["auto_categorized"] >= 2  # Staples + Shell
+        assert result["auto_categorized"] >= 2  # Kroger + Shell
 
 
 class TestStarterRuleProvenance:
     """ADR 0006: a shipped guess must be distinguishable from a taught rule."""
 
     def test_starter_matches_are_marked(self, conn):
-        match = categorize.match_transaction(conn, "STAPLES 00123", -45000)
+        match = categorize.match_transaction(conn, "KROGER 00123", -45000)
         assert match.is_starter_rule is True
 
     def test_user_rules_are_not_marked_as_starter(self, conn):
-        meals = accounts.by_code(conn, "6450").id
-        categorize.create_rule(conn, "ZZQQ MYSTERY", meals)
+        entertainment = accounts.by_code(conn, "6450").id
+        categorize.create_rule(conn, "ZZQQ MYSTERY", entertainment)
         match = categorize.match_transaction(conn, "ZZQQ MYSTERY VENDOR", -9900)
         assert match.is_starter_rule is False
 
@@ -201,14 +201,14 @@ class TestStarterRuleProvenance:
         # The scaffolding is designed to come down: once the user teaches us, the
         # suggestion stops being a guess (user priority 100 beats builtin 500).
         assert categorize.match_transaction(conn, "SHELL OIL 5734", -6250).is_starter_rule
-        categorize.create_rule(conn, "SHELL", accounts.by_code(conn, "6400").id)
+        categorize.create_rule(conn, "SHELL", accounts.by_code(conn, "6600").id)
         after = categorize.match_transaction(conn, "SHELL OIL 5734", -6250)
         assert after.is_starter_rule is False
-        assert after.account_code == "6400"
+        assert after.account_code == "6600"
 
     def test_batch_reports_starter_count_separately(self, conn, checking):
         result = csv_import.import_csv(conn, CHASE, "chase.csv", checking)
-        # Staples + Shell are starter guesses; the mystery vendor matches nothing.
+        # Kroger + Shell are starter guesses; the mystery vendor matches nothing.
         assert result["from_starter_rules"] == 2
         assert result["auto_categorized"] == 2
 
@@ -216,7 +216,7 @@ class TestStarterRuleProvenance:
         csv_import.import_csv(conn, CHASE, "chase.csv", checking)
         row = conn.execute(
             """SELECT suggested_rule_id FROM staged_transactions
-                WHERE description LIKE 'STAPLES%'"""
+                WHERE description LIKE 'KROGER%'"""
         ).fetchone()
         assert row["suggested_rule_id"] is not None
 
@@ -230,7 +230,7 @@ class TestStarterRuleProvenance:
         # duplicate, and duplicates are never categorized, so it would prove nothing.
         february = (
             "Date,Description,Amount\n"
-            "2026-02-15,STAPLES 00987,-120.00\n"
+            "2026-02-15,KROGER 00987,-120.00\n"
             "2026-02-20,SHELL OIL 1122,-48.00\n"
         )
         second = csv_import.import_csv(conn, february, "february.csv", checking)
@@ -259,9 +259,9 @@ class TestStarterRuleProvenance:
         ).fetchone()
         assert staged["suggested_rule_id"] is not None  # started as a starter guess
 
-        # The user says this is revenue, not fuel -- Shell is a customer here.
-        revenue = accounts.by_code(conn, "4000").id
-        posting.post_staged(conn, staged["id"], revenue)
+        # The user says this was actually a rebate, not fuel.
+        income = accounts.by_code(conn, "4000").id
+        posting.post_staged(conn, staged["id"], income)
 
         after = conn.execute(
             """SELECT suggested_rule_id, suggested_account_id, suggested_reason
@@ -269,7 +269,7 @@ class TestStarterRuleProvenance:
             (staged["id"],),
         ).fetchone()
         assert after["suggested_rule_id"] is None
-        assert after["suggested_account_id"] == revenue
+        assert after["suggested_account_id"] == income
         assert "you chose" in after["suggested_reason"]
 
     def test_accepting_a_guess_as_is_keeps_its_provenance(self, conn, checking):
@@ -292,7 +292,7 @@ class TestStarterRuleProvenance:
         csv_import.import_csv(conn, CHASE, "chase.csv", checking)
         staged = conn.execute(
             """SELECT id, suggested_rule_id, suggested_account_id
-                 FROM staged_transactions WHERE description LIKE 'STAPLES%'"""
+                 FROM staged_transactions WHERE description LIKE 'KROGER%'"""
         ).fetchone()
 
         conn.execute("DELETE FROM rules WHERE id = ?", (staged["suggested_rule_id"],))
@@ -334,7 +334,7 @@ class TestDraftZone:
         csv_import.import_csv(conn, CHASE, "chase.csv", checking)
         staged_id = conn.execute("SELECT id FROM staged_transactions LIMIT 1").fetchone()["id"]
 
-        for code in ["6100", "6400", "6450", "6100"]:
+        for code in ["6100", "6600", "6450", "6100"]:
             posting.choose_category(conn, staged_id, accounts.by_code(conn, code).id)
 
         assert conn.execute("SELECT COUNT(*) AS n FROM journal_entries").fetchone()["n"] == 0
@@ -380,13 +380,13 @@ class TestDraftZone:
     def test_cannot_recategorize_a_posted_row(self, conn, checking):
         csv_import.import_csv(conn, CHASE, "chase.csv", checking)
         staged = conn.execute(
-            "SELECT id FROM staged_transactions WHERE description LIKE 'STAPLES%'"
+            "SELECT id FROM staged_transactions WHERE description LIKE 'KROGER%'"
         ).fetchone()
         posting.post_staged(conn, staged["id"])
 
         # Immutability starts at posting -- that boundary still holds.
         with pytest.raises(posting.PostingError, match="already posted"):
-            posting.choose_category(conn, staged["id"], accounts.by_code(conn, "6400").id)
+            posting.choose_category(conn, staged["id"], accounts.by_code(conn, "6600").id)
 
     def test_cannot_choose_the_rows_own_bank_account(self, conn, checking):
         csv_import.import_csv(conn, CHASE, "chase.csv", checking)
@@ -425,7 +425,7 @@ class TestPostingStaged:
     def test_posting_produces_a_balanced_entry(self, conn, checking):
         csv_import.import_csv(conn, CHASE, "chase.csv", checking)
         staged = conn.execute(
-            "SELECT id FROM staged_transactions WHERE description LIKE 'STAPLES%'"
+            "SELECT id FROM staged_transactions WHERE description LIKE 'KROGER%'"
         ).fetchone()
 
         entry_id = posting.post_staged(conn, staged["id"])
@@ -451,7 +451,7 @@ class TestPostingStaged:
     def test_batch_post_leaves_uncategorized_rows_pending(self, conn, checking):
         content = (
             "Date,Description,Amount\n"
-            "2026-01-15,STAPLES 00123,-45.00\n"
+            "2026-01-15,KROGER 00123,-45.00\n"
             "2026-01-16,ZZQQ MYSTERY VENDOR,-99.00\n"
         )
         result = csv_import.import_csv(conn, content, "mixed.csv", checking)
@@ -471,5 +471,5 @@ class TestPostingStaged:
         assert ledger.is_balanced(conn)
 
         pnl = reports.profit_and_loss(conn, "2026-01-01", "2026-12-31")
-        # Staples 450 + Shell 62.50 categorized as expenses.
+        # Kroger 450 + Shell 62.50 categorized as expenses.
         assert pnl["operating_expenses"]["total_minor"] == 51250

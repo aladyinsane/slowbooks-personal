@@ -22,17 +22,17 @@ export function StarterRuleBanner({ count, onAcceptAll, onReview, busy }: Props)
       </h2>
 
       <p>
-        SlowBooks ships with about 60 common merchant rules — <code>STAPLES</code> →
-        Office Supplies, <code>SHELL</code> → Vehicle &amp; Fuel — so your first import
-        isn&rsquo;t entirely manual. They are <strong>guesses about your business, and we
-        have never seen your business.</strong>
+        SlowBooks ships with about 60 common merchant rules — <code>KROGER</code> →
+        Groceries, <code>SHELL</code> → Transportation &amp; Fuel — so your first import
+        isn&rsquo;t entirely manual. They are <strong>guesses about your life, and we
+        have never seen your life.</strong>
       </p>
 
       <p className="warn">
         Please check these before accepting. A wrong guess here is easy to miss precisely
         because it looks reasonable — an uncategorized row demands your attention, but a
-        plausible-but-wrong one gets a glance and a scroll. <code>SHELL</code> is fuel for
-        a contractor and a customer for a chemical supplier.
+        plausible-but-wrong one gets a glance and a scroll. <code>VENMO</code> could be a
+        friend paying you back, or you splitting a bill.
       </p>
 
       <p>

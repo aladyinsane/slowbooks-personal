@@ -15,41 +15,37 @@ from slowbooks import accounts, ledger, reports
 @pytest.fixture
 def chart(conn):
     return {code: accounts.by_code(conn, code).id
-            for code in ["1000", "2100", "2500", "3000", "4000", "5000",
-                         "6100", "6200", "6700"]}
+            for code in ["1000", "2100", "2500", "3000", "4000",
+                         "6000", "6100", "6700"]}
 
 
 @pytest.fixture
 def books(conn, chart):
     """A small but realistic set of books for one quarter."""
-    # Owner funds the business
-    ledger.post(conn, "2026-01-02", "Owner investment",
+    # Where the books started
+    ledger.post(conn, "2026-01-02", "Opening balance",
                 [ledger.debit(chart["1000"], 5_000_00),
                  ledger.credit(chart["3000"], 5_000_00)])
-    # Revenue
-    ledger.post(conn, "2026-01-15", "Client payment",
+    # Income
+    ledger.post(conn, "2026-01-15", "Payroll",
                 [ledger.debit(chart["1000"], 10_000_00),
                  ledger.credit(chart["4000"], 10_000_00)])
-    ledger.post(conn, "2026-02-15", "Client payment",
+    ledger.post(conn, "2026-02-15", "Payroll",
                 [ledger.debit(chart["1000"], 8_000_00),
                  ledger.credit(chart["4000"], 8_000_00)])
-    # COGS
-    ledger.post(conn, "2026-01-20", "Materials",
-                [ledger.debit(chart["5000"], 3_000_00),
-                 ledger.credit(chart["1000"], 3_000_00)])
-    # Operating expenses
+    # Expenses
     ledger.post(conn, "2026-01-31", "Rent",
-                [ledger.debit(chart["6200"], 2_000_00),
+                [ledger.debit(chart["6000"], 2_000_00),
                  ledger.credit(chart["1000"], 2_000_00)])
     ledger.post(conn, "2026-02-28", "Rent",
-                [ledger.debit(chart["6200"], 2_000_00),
+                [ledger.debit(chart["6000"], 2_000_00),
                  ledger.credit(chart["1000"], 2_000_00)])
-    ledger.post(conn, "2026-01-10", "Office supplies on card",
+    ledger.post(conn, "2026-01-10", "Groceries on card",
                 [ledger.debit(chart["6100"], 450_00),
                  ledger.credit(chart["2100"], 450_00)])
     # Outside the reporting window on purpose.
     ledger.post(conn, "2026-04-05", "April rent",
-                [ledger.debit(chart["6200"], 2_000_00),
+                [ledger.debit(chart["6000"], 2_000_00),
                  ledger.credit(chart["1000"], 2_000_00)])
     return conn
 
@@ -59,11 +55,9 @@ class TestProfitAndLoss:
         pnl = reports.profit_and_loss(books, "2026-01-01", "2026-03-31")
 
         assert pnl["revenue"]["total_minor"] == 18_000_00
-        assert pnl["cost_of_goods_sold"]["total_minor"] == 3_000_00
-        assert pnl["gross_profit_minor"] == 15_000_00
-        assert pnl["operating_expenses"]["total_minor"] == 4_450_00  # rent x2 + supplies
-        assert pnl["net_income_minor"] == 10_550_00
-        assert pnl["net_income"] == "$10,550.00"
+        assert pnl["operating_expenses"]["total_minor"] == 4_450_00  # rent x2 + groceries
+        assert pnl["net_income_minor"] == 13_550_00
+        assert pnl["net_income"] == "$13,550.00"
 
     def test_period_boundaries_are_inclusive_and_exclude_outside(self, books):
         # April rent must not leak into Q1.
@@ -94,12 +88,12 @@ class TestBalanceSheet:
 
     def test_balance_sheet_figures(self, books):
         sheet = reports.balance_sheet(books, "2026-03-31")
-        # Checking: 5000 + 10000 + 8000 - 3000 - 2000 - 2000 = 16,000
-        assert sheet["assets"]["total_minor"] == 16_000_00
-        # Card balance from the supplies purchase
+        # Checking: 5000 + 10000 + 8000 - 2000 - 2000 = 19,000
+        assert sheet["assets"]["total_minor"] == 19_000_00
+        # Card balance from the groceries purchase
         assert sheet["liabilities"]["total_minor"] == 450_00
-        # Capital 5,000 + earnings 10,550
-        assert sheet["equity"]["total_minor"] == 15_550_00
+        # Opening balance 5,000 + earnings 13,550
+        assert sheet["equity"]["total_minor"] == 18_550_00
 
     def test_liabilities_read_positive(self, books):
         sheet = reports.balance_sheet(books, "2026-03-31")
@@ -142,7 +136,7 @@ class TestReportsAgree:
         )
         assert reports.balance_sheet(books, "2026-12-31")["balanced"]
 
-        ledger.void(books, entry_id, "not a business expense")
+        ledger.void(books, entry_id, "miscoded")
 
         sheet = reports.balance_sheet(books, "2026-12-31")
         assert sheet["balanced"]

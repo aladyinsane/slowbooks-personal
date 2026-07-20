@@ -159,7 +159,7 @@ class TestUpgrades:
         checking = accounts.by_code(conn, "1000").id
         result = csv_import.import_csv(
             conn,
-            "Date,Description,Amount\n2026-01-15,STAPLES 00123,-45.00\n",
+            "Date,Description,Amount\n2026-01-15,KROGER 00123,-45.00\n",
             "chase.csv",
             checking,
         )
@@ -189,7 +189,7 @@ class TestUpgrades:
         conn.executescript(
             """
             INSERT INTO accounts (code, name, type, normal_balance)
-                 VALUES ('1000', 'Business Checking', 'asset', 'debit');
+                 VALUES ('1000', 'Checking', 'asset', 'debit');
             INSERT INTO import_batches (id, filename, account_id, row_count)
                  VALUES (1, 'old.csv', 1, 1);
             INSERT INTO staged_transactions
@@ -228,10 +228,10 @@ class TestUpgrades:
         conn.executescript(
             """
             INSERT INTO accounts (code, name, type, normal_balance)
-                 VALUES ('1000', 'Business Checking', 'asset', 'debit'),
-                        ('1010', 'Business Savings', 'asset', 'debit'),
-                        ('2100', 'Credit Card Payable', 'liability', 'credit'),
-                        ('6100', 'Office Supplies', 'expense', 'debit');
+                 VALUES ('1000', 'Checking', 'asset', 'debit'),
+                        ('1010', 'Savings', 'asset', 'debit'),
+                        ('2100', 'Credit Card', 'liability', 'credit'),
+                        ('6100', 'Groceries', 'expense', 'debit');
             """
         )
         conn.commit()
@@ -341,14 +341,14 @@ def test_period_locking_works_after_migrating(tmp_path, from_version):
     db.initialize(conn)
 
     checking = accounts.by_code(conn, "1000").id
-    supplies = accounts.by_code(conn, "6100").id
-    ledger.post(conn, "2026-01-15", "Staples",
-                [ledger.debit(supplies, 45000), ledger.credit(checking, 45000)])
+    groceries = accounts.by_code(conn, "6100").id
+    ledger.post(conn, "2026-01-15", "Groceries",
+                [ledger.debit(groceries, 45000), ledger.credit(checking, 45000)])
     periods.close(conn, "2026-01-31")
 
     with pytest.raises(ledger.LedgerError, match="books are closed"):
         ledger.post(conn, "2026-01-20", "Late",
-                    [ledger.debit(supplies, 2500), ledger.credit(checking, 2500)])
+                    [ledger.debit(groceries, 2500), ledger.credit(checking, 2500)])
     conn.close()
 
 

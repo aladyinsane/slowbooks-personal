@@ -196,8 +196,8 @@ export function App() {
     <main>
       <header>
         <div>
-          <h1>SlowBooks</h1>
-          <p className="tagline">Simple accounting software that doesn&rsquo;t suck to use.</p>
+          <h1>SlowBooks Personal</h1>
+          <p className="tagline">Simple personal finance software that doesn&rsquo;t suck to use.</p>
         </div>
         {/* The ledger's health belongs at the top, not buried in a footer: it's the one
             fact that qualifies everything else on the page. */}

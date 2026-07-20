@@ -1,7 +1,7 @@
 [project]
 name = "slowbooks"
 version = "0.1.0"
-description = "Simple accounting software that doesn't suck to use"
+description = "Simple personal finance software that doesn't suck to use"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = [

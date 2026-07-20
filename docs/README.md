@@ -3,6 +3,13 @@
 The development process lives here: what we learned, what we decided, why, and what we
 deliberately said no to.
 
+**Note:** this is SlowBooks Personal, a fork of SlowBooks (small-business accounting)
+retargeted for personal finance. The docs below are the original project's research and
+decisions — kept as background, since the underlying engineering (double-entry,
+deterministic rules, local-first SQLite) carried over unchanged. Where a doc talks about
+QuickBooks, clients, or a business's chart of accounts, read it as design history rather
+than a description of this fork's target user.
+
 ## Start here
 
 **[research/quickbooks-pain-points.md](research/quickbooks-pain-points.md)** — the most

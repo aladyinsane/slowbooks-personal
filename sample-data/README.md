@@ -11,6 +11,9 @@ Between them these cover the two dominant CSV shapes and both common date format
 `ZZQQ VENDOR 44821` in the checking file matches no starter rule on purpose — it's there
 so the "needs review" path is always exercised.
 
+A fictional household: a paycheck, rent, groceries, a streaming subscription, a friend
+paying back a shared bill over Venmo, and a card used for the rest.
+
 Try it:
 
 ```bash

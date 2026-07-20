@@ -1,20 +1,24 @@
-# SlowBooks
+# SlowBooks Personal
 
-Simple accounting software that doesn't suck to use.
+Simple personal finance software that doesn't suck to use.
 
-Small-business accounting built around one idea: **the books belong to the person who
-keeps them.** One SQLite file on your own disk, GAAP-correct double-entry underneath,
-plain language on top, and no subscription that can hold your data hostage.
+Personal finance built around one idea: **the books belong to the person who keeps
+them.** One SQLite file on your own disk, real double-entry underneath, plain language
+on top, and no subscription that can hold your data hostage.
 
 ## Why
 
-QuickBooks is the industry standard and is widely disliked — for its accreted UI, 3–10
-second page loads, ~70% price increases, constant upselling, and forced migration off
-Desktop. The alternatives don't fix the root problem: even Xero, the best-liked of them,
-[cannot make local backups of your data](docs/research/competitive-landscape.md).
+Mint shut down and took years of transaction history with it. YNAB and Monarch charge
+a recurring fee to keep using data you entered yourself, and linking your bank through
+a service like Plaid means a third party sits between you and your own numbers. None of
+them let you just... have the file.
 
-The full diagnosis is in [docs/research/quickbooks-pain-points.md](docs/research/quickbooks-pain-points.md),
-and the principles it produced are in [docs/product/principles.md](docs/product/principles.md).
+This is a fork of SlowBooks — small-business accounting software built on the same
+premise — retargeted for a household instead of a business: no Accounts Receivable, no
+cost of goods sold, no owner's draw. Just checking, savings, cards, loans, and where the
+money actually goes.
+
+The principles it was built on are in [docs/product/principles.md](docs/product/principles.md).
 
 ## Status
 
@@ -27,14 +31,14 @@ period is *proven* against the bank rather than merely balanced.
 |---|---|
 | ✅ Double-entry ledger, balance enforced by SQLite trigger | ✅ P&L, Balance Sheet, Trial Balance |
 | ✅ CSV import (dialect sniffing, duplicate detection) | ✅ Deterministic rules + starter pack |
-| ✅ Default GAAP-shaped chart of accounts | ✅ Void-by-reversal audit trail |
+| ✅ Personal chart of accounts | ✅ Void-by-reversal audit trail |
 | ✅ Transfers between your own accounts | ✅ React categorization grid |
 | ✅ **Data export** — ZIP, general ledger, raw .db | ✅ **Bank reconciliation** |
 | ✅ Visual design pass (light + dark) | ✅ **Period locking** — closes the books through a date |
 | ✅ **Reports on screen** + register with drill-down | ✅ Transaction search (substring) |
 | ✅ **Print stylesheet** — P&L and Balance Sheet as clean statements | ⬜ Refunds, backup, split transactions (v0.2+) |
 
-Not production software. It has not been reviewed by a CPA. Don't file taxes with it yet.
+Not production software. Don't rely on it as your only record.
 
 ## Quick start
 
@@ -43,7 +47,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate          # Windows;  source .venv/bin/activate elsewhere
 pip install -e ".[dev]"
-pytest                           # 110 tests, ~1s
+pytest                           # 390 tests, ~13s
 uvicorn slowbooks.main:app --reload
 ```
 
@@ -69,7 +73,7 @@ cd frontend && npm install && npm run dev     # http://localhost:5173
 backend/        FastAPI + SQLite. The ledger, import, rules, reports.
 frontend/       React + TypeScript (Vite). Stub for now.
 docs/
-  research/     QuickBooks pain points, competitors, GAAP, core features
+  research/     Background from the original SlowBooks (small-business accounting)
   decisions/    ADRs — why things are the way they are
   product/      Principles, roadmap, parking lot
   engineering/  Architecture, dev workflow
@@ -88,6 +92,6 @@ See [docs/engineering/contributing.md](docs/engineering/contributing.md).
 
 ## License
 
-SlowBooks is free software under the [GNU Affero General Public License v3.0](LICENSE) — copyright © 2026 Lauren Chaplinski.
+SlowBooks Personal is free software under the [GNU Affero General Public License v3.0](LICENSE) — copyright © 2026 Lauren Chaplinski.
 
-Use it, study it, change it, share it. The one obligation: if you distribute it — or run a modified version as a network service — you pass the same freedoms on, source included. That network clause is the point. Accounting software has a habit of getting locked up and rented back to you; the AGPL is what keeps a hosted SlowBooks from becoming the thing it was built to replace.
+Use it, study it, change it, share it. The one obligation: if you distribute it — or run a modified version as a network service — you pass the same freedoms on, source included. That network clause is the point. Financial software has a habit of getting locked up and rented back to you; the AGPL is what keeps a hosted SlowBooks from becoming the thing it was built to replace.

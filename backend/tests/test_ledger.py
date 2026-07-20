@@ -28,7 +28,7 @@ def chart(conn):
 class TestPosting:
     def test_posts_a_balanced_entry(self, conn, chart):
         entry_id = ledger.post(
-            conn, "2026-01-15", "Staples run",
+            conn, "2026-01-15", "Grocery run",
             [ledger.debit(chart["supplies"], 45000),
              ledger.credit(chart["card"], 45000)],
         )
@@ -102,7 +102,7 @@ class TestDatabaseEnforcement:
 
     def test_posted_entry_cannot_be_deleted(self, conn, chart):
         entry_id = ledger.post(
-            conn, "2026-01-15", "Staples",
+            conn, "2026-01-15", "Groceries",
             [ledger.debit(chart["supplies"], 45000), ledger.credit(chart["card"], 45000)],
         )
         with pytest.raises(sqlite3.IntegrityError, match="cannot be deleted"):
@@ -110,7 +110,7 @@ class TestDatabaseEnforcement:
 
     def test_posted_entry_date_cannot_be_changed(self, conn, chart):
         entry_id = ledger.post(
-            conn, "2026-01-15", "Staples",
+            conn, "2026-01-15", "Groceries",
             [ledger.debit(chart["supplies"], 45000), ledger.credit(chart["card"], 45000)],
         )
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
@@ -120,7 +120,7 @@ class TestDatabaseEnforcement:
 
     def test_posted_lines_cannot_be_amended(self, conn, chart):
         entry_id = ledger.post(
-            conn, "2026-01-15", "Staples",
+            conn, "2026-01-15", "Groceries",
             [ledger.debit(chart["supplies"], 45000), ledger.credit(chart["card"], 45000)],
         )
         with pytest.raises(sqlite3.IntegrityError, match="immutable"):
@@ -152,7 +152,7 @@ class TestDatabaseEnforcement:
 class TestVoid:
     def test_void_reverses_rather_than_deletes(self, conn, chart):
         entry_id = ledger.post(
-            conn, "2026-01-15", "Staples",
+            conn, "2026-01-15", "Groceries",
             [ledger.debit(chart["supplies"], 45000), ledger.credit(chart["card"], 45000)],
         )
         reversal_id = ledger.void(conn, entry_id, "wrong card")
@@ -167,7 +167,7 @@ class TestVoid:
 
     def test_cannot_void_twice(self, conn, chart):
         entry_id = ledger.post(
-            conn, "2026-01-15", "Staples",
+            conn, "2026-01-15", "Groceries",
             [ledger.debit(chart["supplies"], 45000), ledger.credit(chart["card"], 45000)],
         )
         ledger.void(conn, entry_id)

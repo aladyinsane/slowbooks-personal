@@ -20,19 +20,19 @@ def checking(conn):
 
 @pytest.fixture
 def books(conn, checking):
-    capital = accounts.by_code(conn, "3000").id
+    opening_balance = accounts.by_code(conn, "3000").id
     supplies = accounts.by_code(conn, "6100").id
-    rent = accounts.by_code(conn, "6200").id
-    revenue = accounts.by_code(conn, "4100").id
+    rent = accounts.by_code(conn, "6000").id
+    income = accounts.by_code(conn, "4100").id
 
-    ledger.post(conn, "2026-01-02", "Owner investment",
-                [ledger.debit(checking, 10_000_00), ledger.credit(capital, 10_000_00)])
+    ledger.post(conn, "2026-01-02", "Opening balance",
+                [ledger.debit(checking, 10_000_00), ledger.credit(opening_balance, 10_000_00)])
     ledger.post(conn, "2026-01-10", "Rent",
                 [ledger.debit(rent, 1_000_00), ledger.credit(checking, 1_000_00)])
-    ledger.post(conn, "2026-01-20", "STAPLES 00123",
+    ledger.post(conn, "2026-01-20", "KROGER 00123",
                 [ledger.debit(supplies, 450_00), ledger.credit(checking, 450_00)])
-    ledger.post(conn, "2026-02-05", "Client payment",
-                [ledger.debit(checking, 3_000_00), ledger.credit(revenue, 3_000_00)])
+    ledger.post(conn, "2026-02-05", "Freelance project",
+                [ledger.debit(checking, 3_000_00), ledger.credit(income, 3_000_00)])
     return conn
 
 
@@ -95,12 +95,12 @@ class TestTheOtherSide:
     def test_each_line_names_where_the_money_went(self, books, checking):
         # A register hides the debits and credits; it must not hide the *story*.
         page = reports.register(books, checking)
-        staples = next(ln for ln in page["lines"] if "STAPLES" in ln["description"])
-        assert staples["other_side"] == "6100 Office Supplies"
+        kroger = next(ln for ln in page["lines"] if "KROGER" in ln["description"])
+        assert kroger["other_side"] == "6100 Groceries"
 
     def test_a_split_entry_lists_every_other_account(self, conn, checking):
         principal = accounts.by_code(conn, "2500").id
-        interest = accounts.by_code(conn, "6700").id
+        interest = accounts.by_code(conn, "6750").id
         ledger.post(conn, "2026-01-31", "Loan payment",
                     [ledger.debit(principal, 900_00), ledger.debit(interest, 100_00),
                      ledger.credit(checking, 1_000_00)])
@@ -108,7 +108,7 @@ class TestTheOtherSide:
         page = reports.register(conn, checking)
         other = page["lines"][0]["other_side"]
         assert "2500 Loans Payable" in other
-        assert "6700 Interest Expense" in other
+        assert "6750 Interest Expense" in other
 
     def test_signs_follow_the_account_not_the_reader(self, books, checking):
         page = reports.register(books, checking)
@@ -125,12 +125,12 @@ class TestFiltering:
 
     def test_searching_by_description(self, books, checking):
         # "Can't search for keywords in transactions" is a named QuickBooks complaint.
-        page = reports.register(books, checking, query="staples")
+        page = reports.register(books, checking, query="kroger")
         assert page["count"] == 1
-        assert "STAPLES" in page["lines"][0]["description"]
+        assert "KROGER" in page["lines"][0]["description"]
 
     def test_search_is_case_insensitive(self, books, checking):
-        assert reports.register(books, checking, query="StApLeS")["count"] == 1
+        assert reports.register(books, checking, query="KrOgEr")["count"] == 1
 
     def test_a_filtered_register_has_no_running_balance(self, books, checking):
         """A search result is not a statement.
@@ -139,7 +139,7 @@ class TestFiltering:
         that look authoritative and mean nothing -- the exact failure this product keeps
         finding elsewhere.
         """
-        page = reports.register(books, checking, query="staples")
+        page = reports.register(books, checking, query="kroger")
         assert page["is_filtered"] is True
         assert page["opening_balance"] is None
         assert page["opening_balance_minor"] is None
@@ -246,7 +246,7 @@ class TestAllAccounts:
         page = reports.register(books, None, start="2026-02-01")
         assert all(line["date"] >= "2026-02-01" for line in page["lines"])
 
-        searched = reports.register(books, None, query="staples")
+        searched = reports.register(books, None, query="kroger")
         assert searched["total_count"] == 2  # both sides of the one entry
 
     def test_a_single_account_still_gets_its_balance(self, books, checking):
@@ -259,9 +259,9 @@ class TestPagination:
     @pytest.fixture
     def many(self, conn, checking):
         supplies = accounts.by_code(conn, "6100").id
-        capital = accounts.by_code(conn, "3000").id
+        opening_balance = accounts.by_code(conn, "3000").id
         ledger.post(conn, "2026-01-01", "Opening",
-                    [ledger.debit(checking, 1_000_00), ledger.credit(capital, 1_000_00)])
+                    [ledger.debit(checking, 1_000_00), ledger.credit(opening_balance, 1_000_00)])
         for day in range(1, 26):
             ledger.post(conn, f"2026-02-{day:02d}", f"Purchase {day}",
                         [ledger.debit(supplies, 1_00), ledger.credit(checking, 1_00)])
@@ -356,7 +356,7 @@ class TestAgreesWithTheReports:
         page = reports.register(books, checking, end="2026-02-28")
         sheet = reports.balance_sheet(books, "2026-02-28")
         line = next(
-            item for item in sheet["assets"]["lines"] if item["name"] == "Business Checking"
+            item for item in sheet["assets"]["lines"] if item["name"] == "Checking"
         )
         assert page["closing_balance_minor"] == line["amount_minor"]
 

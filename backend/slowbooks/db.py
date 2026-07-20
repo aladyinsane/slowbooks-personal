@@ -155,8 +155,9 @@ CREATE TABLE IF NOT EXISTS rules (
     match_type TEXT NOT NULL CHECK (match_type IN ('contains','regex','exact')),
     pattern    TEXT NOT NULL,
     account_id INTEGER NOT NULL REFERENCES accounts(id),
-    -- Sign constraint lets one pattern mean different things by direction: a SQUARE
-    -- debit is a fee, a SQUARE credit is revenue. 'any' when direction is irrelevant.
+    -- Sign constraint lets one pattern mean different things by direction: a VENMO
+    -- debit is a gift you sent, a VENMO credit is income. 'any' when direction is
+    -- irrelevant.
     applies_to TEXT NOT NULL DEFAULT 'any' CHECK (applies_to IN ('any','debit','credit')),
     is_builtin INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))

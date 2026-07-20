@@ -1,6 +1,6 @@
 """Chart of accounts tests (ADR 0010).
 
-The default chart is a guess about a business we haven't met. It has to be editable, and
+The default chart is a guess about a life we haven't seen. It has to be editable, and
 the editing has to be incapable of breaking posted history.
 """
 
@@ -24,26 +24,26 @@ class TestRename:
         Worth a test rather than an assumption: it's the property that makes "rename
         freely" defensible at all.
         """
-        supplies = accounts.by_code(conn, "6100").id
-        ledger.post(conn, "2026-01-15", "Staples",
-                    [ledger.debit(supplies, 45000), ledger.credit(checking, 45000)])
+        groceries = accounts.by_code(conn, "6100").id
+        ledger.post(conn, "2026-01-15", "Groceries",
+                    [ledger.debit(groceries, 45000), ledger.credit(checking, 45000)])
 
-        accounts.update(conn, supplies, name="Stationery & bits")
+        accounts.update(conn, groceries, name="Stationery & bits")
 
-        assert accounts.by_id(conn, supplies).name == "Stationery & bits"
-        assert ledger.account_balance(conn, supplies) == 45000
+        assert accounts.by_id(conn, groceries).name == "Stationery & bits"
+        assert ledger.account_balance(conn, groceries) == 45000
         assert ledger.is_balanced(conn)
 
     def test_guidance_is_the_users_to_rewrite(self, conn):
         # Ours is a guess written by a developer. Theirs beats ours.
-        supplies = accounts.by_code(conn, "6100").id
-        accounts.update(conn, supplies, description="Anything from the art shop.")
-        assert accounts.by_id(conn, supplies).description == "Anything from the art shop."
+        groceries = accounts.by_code(conn, "6100").id
+        accounts.update(conn, groceries, description="Anything from the art shop.")
+        assert accounts.by_id(conn, groceries).description == "Anything from the art shop."
 
     def test_blank_name_is_refused(self, conn):
-        supplies = accounts.by_code(conn, "6100").id
+        groceries = accounts.by_code(conn, "6100").id
         with pytest.raises(ValueError, match="needs a name"):
-            accounts.update(conn, supplies, name="   ")
+            accounts.update(conn, groceries, name="   ")
 
     def test_update_cannot_change_code_or_type(self, conn):
         # Not a runtime check -- update() has no such parameters. Flipping 6100 from
@@ -62,22 +62,22 @@ class TestRename:
 
 class TestHide:
     def test_hiding_removes_it_from_the_picker_but_not_the_books(self, conn, checking):
-        supplies = accounts.by_code(conn, "6100").id
-        ledger.post(conn, "2026-01-15", "Staples",
-                    [ledger.debit(supplies, 45000), ledger.credit(checking, 45000)])
+        groceries = accounts.by_code(conn, "6100").id
+        ledger.post(conn, "2026-01-15", "Groceries",
+                    [ledger.debit(groceries, 45000), ledger.credit(checking, 45000)])
 
-        accounts.update(conn, supplies, is_active=False)
+        accounts.update(conn, groceries, is_active=False)
 
-        assert supplies not in {a.id for a in accounts.list_all(conn)}
-        assert supplies in {a.id for a in accounts.list_all(conn, active_only=False)}
+        assert groceries not in {a.id for a in accounts.list_all(conn)}
+        assert groceries in {a.id for a in accounts.list_all(conn, active_only=False)}
         # The balance is still real, and still on the P&L. Hiding is about the list.
-        assert ledger.account_balance(conn, supplies) == 45000
+        assert ledger.account_balance(conn, groceries) == 45000
 
     def test_hiding_is_reversible(self, conn):
-        supplies = accounts.by_code(conn, "6100").id
-        accounts.update(conn, supplies, is_active=False)
-        accounts.update(conn, supplies, is_active=True)
-        assert supplies in {a.id for a in accounts.list_all(conn)}
+        groceries = accounts.by_code(conn, "6100").id
+        accounts.update(conn, groceries, is_active=False)
+        accounts.update(conn, groceries, is_active=True)
+        assert groceries in {a.id for a in accounts.list_all(conn)}
 
     def test_cannot_hide_an_account_you_import_statements_into(self, conn, checking):
         # Hiding checking would strand the import screen it feeds.
@@ -100,20 +100,13 @@ class TestAdd:
         assert low <= int(code) <= high
         assert code not in {a.code for a in accounts.list_all(conn, active_only=False)}
 
-    def test_a_new_expense_lands_in_operating_expenses_not_cogs(self, conn):
-        """The expense range spans 5000-6999, but those halves are different sections
-        of the P&L: 5000s are COGS (above gross profit), 6000s are operating expenses
-        (below it). Auto-numbering into the lowest free slot put a new "Studio rent" at
-        5010 -- misfiling it as cost of goods sold and understating gross profit on
-        every report from then on.
-        """
-        code = accounts.next_code(conn, accounts.EXPENSE)
-        assert 6000 <= int(code) <= 6999, f"{code} is a COGS code, not an operating expense"
-
-    def test_cogs_is_still_reachable_by_naming_the_code(self, conn):
-        # A deliberate choice stays available; only the default changed.
-        materials = accounts.create(conn, "5300", "Timber", accounts.EXPENSE)
-        assert materials.code == "5300"
+    def test_expense_range_has_no_cogs_split(self, conn):
+        # A business splits expense into 5000s (COGS) and 6000s (operating expense)
+        # because it needs gross profit to mean something. A household has no goods it
+        # resells, so that split has no referent here -- expense is just 6000-6999, and
+        # a 5xxx code is simply out of range, not a deliberate business-only choice.
+        with pytest.raises(ValueError, match="range"):
+            accounts.create(conn, "5300", "Timber", accounts.EXPENSE)
 
     def test_next_code_leaves_room_between_accounts(self, conn):
         # Steps of 10, like the default chart, so related accounts can be inserted later.
@@ -144,7 +137,7 @@ class TestAdd:
 
     def test_a_new_statement_account_can_be_transferred_to(self, conn):
         second = accounts.create(
-            conn, "1020", "Second Checking", accounts.ASSET, is_statement_account=True
+            conn, "1200", "Second Checking", accounts.ASSET, is_statement_account=True
         )
         assert second.id in {a.id for a in accounts.list_statement_accounts(conn)}
 
@@ -155,7 +148,7 @@ class TestAdd:
 
 class TestDelete:
     def test_an_unused_account_can_be_deleted(self, conn):
-        invented = accounts.create(conn, "6800", "Never used", accounts.EXPENSE)
+        invented = accounts.create(conn, "6975", "Never used", accounts.EXPENSE)
         accounts.delete(conn, invented.id)
         assert invented.id not in {a.id for a in accounts.list_all(conn, active_only=False)}
 
@@ -165,24 +158,24 @@ class TestDelete:
         Deleting this would leave journal lines pointing at nothing -- a hole in
         append-only history that ADR 0004 says can never exist.
         """
-        supplies = accounts.by_code(conn, "6100").id
-        ledger.post(conn, "2026-01-15", "Staples",
-                    [ledger.debit(supplies, 45000), ledger.credit(checking, 45000)])
+        groceries = accounts.by_code(conn, "6100").id
+        ledger.post(conn, "2026-01-15", "Groceries",
+                    [ledger.debit(groceries, 45000), ledger.credit(checking, 45000)])
 
         with pytest.raises(accounts.AccountInUseError, match="posted transaction"):
-            accounts.delete(conn, supplies)
-        assert accounts.by_id(conn, supplies) is not None
+            accounts.delete(conn, groceries)
+        assert accounts.by_id(conn, groceries) is not None
 
     def test_the_refusal_says_what_is_using_it(self, conn, checking):
         # "Used by 2 posted lines" is an answer; "you can't do that" is a wall.
-        supplies = accounts.by_code(conn, "6100").id
-        ledger.post(conn, "2026-01-15", "Staples",
-                    [ledger.debit(supplies, 45000), ledger.credit(checking, 45000)])
+        groceries = accounts.by_code(conn, "6100").id
+        ledger.post(conn, "2026-01-15", "Groceries",
+                    [ledger.debit(groceries, 45000), ledger.credit(checking, 45000)])
 
         with pytest.raises(accounts.AccountInUseError) as exc:
-            accounts.delete(conn, supplies)
+            accounts.delete(conn, groceries)
         message = str(exc.value)
-        assert "6100" in message and "Office Supplies" in message
+        assert "6100" in message and "Groceries" in message
         assert "hide it instead" in message
         # Counts are written for a human: "1 posted transaction", not "1 posted lines".
         assert "1 posted transaction," in message
@@ -190,12 +183,12 @@ class TestDelete:
     def test_a_rule_counts_as_usage(self, conn):
         # Starter rules reference accounts; deleting one out from under a rule would
         # break categorization silently.
-        supplies = accounts.by_code(conn, "6100").id
+        groceries = accounts.by_code(conn, "6100").id
         with pytest.raises(accounts.AccountInUseError, match="categorization rule"):
-            accounts.delete(conn, supplies)
+            accounts.delete(conn, groceries)
 
     def test_a_staged_row_counts_as_usage(self, conn, checking):
-        invented = accounts.create(conn, "6800", "Invented", accounts.EXPENSE)
+        invented = accounts.create(conn, "6975", "Invented", accounts.EXPENSE)
         csv_import.import_csv(
             conn, "Date,Description,Amount\n2026-01-05,ZZQQ THING,-10.00\n",
             "jan.csv", checking,
@@ -219,7 +212,7 @@ class TestDelete:
             accounts.delete(conn, checking)
 
     def test_usage_reports_zero_for_a_fresh_account(self, conn):
-        invented = accounts.create(conn, "6800", "Fresh", accounts.EXPENSE)
+        invented = accounts.create(conn, "6975", "Fresh", accounts.EXPENSE)
         assert accounts.usage(conn, invented.id) == {
             "posted_lines": 0, "staged_transactions": 0, "rules": 0, "reconciliations": 0
         }

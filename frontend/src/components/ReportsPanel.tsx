@@ -167,20 +167,7 @@ export function ReportsPanel({ onDrillDown }: Props) {
       {tab === "pnl" && pnl && (
         <table className="report">
           <tbody>
-            <Section title="Revenue" lines={pnl.revenue.lines} total={pnl.revenue.total} />
-            {pnl.cost_of_goods_sold.lines.length > 0 && (
-              <Section
-                title="Cost of goods sold"
-                lines={pnl.cost_of_goods_sold.lines}
-                total={pnl.cost_of_goods_sold.total}
-              />
-            )}
-            {pnl.cost_of_goods_sold.lines.length > 0 && (
-              <tr className="subtotal">
-                <td>Gross profit</td>
-                <td className="num">{pnl.gross_profit}</td>
-              </tr>
-            )}
+            <Section title="Income" lines={pnl.revenue.lines} total={pnl.revenue.total} />
             <Section
               title="Expenses"
               lines={pnl.operating_expenses.lines}

@@ -17,7 +17,7 @@ from slowbooks.importing import csv_import
 # banks rarely post both sides together, which is why the match window exists.
 CHECKING_OUT = """Date,Description,Amount
 2026-03-10,ONLINE TRANSFER TO SAVINGS,-5000.00
-2026-03-12,STAPLES 00123,-84.19
+2026-03-12,KROGER 00123,-84.19
 """
 
 SAVINGS_IN = """Date,Description,Amount
@@ -46,7 +46,7 @@ def imported(conn, checking, savings):
 class TestStatementAccounts:
     def test_default_chart_marks_the_right_accounts(self, conn):
         codes = {a.code for a in accounts.list_statement_accounts(conn)}
-        assert codes == {"1000", "1010", "2100", "2500"}
+        assert codes == {"1000", "1010", "1020", "2100", "2500"}
 
     def test_receivables_and_equipment_are_not_transfer_targets(self, conn):
         # Assets you cannot move money into. Offering them would be offering nonsense --
@@ -60,7 +60,7 @@ class TestStatementAccounts:
 
     def test_user_can_add_a_second_checking_account(self, conn):
         second = accounts.create(
-            conn, "1020", "Second Checking", "asset", is_statement_account=True
+            conn, "1030", "Second Checking", "asset", is_statement_account=True
         )
         assert second.is_statement_account
         assert second.id in {a.id for a in accounts.list_statement_accounts(conn)}
@@ -80,11 +80,11 @@ class TestDetection:
         assert savings_batch["transfer_pairs_found"] == 1
 
     def test_ordinary_transactions_are_untouched(self, conn, imported):
-        staples = conn.execute(
+        kroger = conn.execute(
             """SELECT transfer_match_id FROM staged_transactions
-                WHERE description LIKE 'STAPLES%'"""
+                WHERE description LIKE 'KROGER%'"""
         ).fetchone()
-        assert staples["transfer_match_id"] is None
+        assert kroger["transfer_match_id"] is None
 
     def test_transfers_get_no_category_suggestion(self, conn, imported):
         # A category for a transfer is wrong by construction, so we must not offer one.
@@ -262,7 +262,7 @@ class TestPosting:
         checking_batch, _ = imported
         result = posting.post_batch(conn, checking_batch["batch_id"])
 
-        # The transfer plus the Staples row, both posted, no double count.
+        # The transfer plus the Kroger row, both posted, no double count.
         assert result["posted"] == 2
         assert ledger.is_balanced(conn)
         assert reports.balance_sheet(conn, "2026-12-31")["balanced"]

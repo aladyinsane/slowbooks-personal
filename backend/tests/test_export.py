@@ -19,8 +19,8 @@ from slowbooks import accounts, db, exporting, ledger, posting
 from slowbooks.importing import csv_import
 
 CHASE = """Transaction Date,Post Date,Description,Category,Type,Amount
-01/15/2026,01/16/2026,STAPLES 00123 SEATTLE WA,Shopping,Sale,-450.00
-01/22/2026,01/23/2026,STRIPE TRANSFER,Income,Deposit,2500.00
+01/15/2026,01/16/2026,KROGER 00123 SEATTLE WA,Shopping,Sale,-450.00
+01/22/2026,01/23/2026,PAYROLL DEPOSIT,Income,Deposit,2500.00
 """
 
 
@@ -178,10 +178,10 @@ class TestMoneyRepresentation:
 
     def test_reports_use_plain_decimals(self, books):
         rows = _read_csv(_archive(books), "general-ledger.csv")
-        staples = next(r for r in rows if "STAPLES" in r["description"] and r["debit"])
+        kroger = next(r for r in rows if "KROGER" in r["description"] and r["debit"])
         # An accountant opening 123456 would conclude we're broken, and be right.
-        assert staples["debit"] == "450.00"
-        assert "$" not in staples["debit"] and "," not in staples["debit"]
+        assert kroger["debit"] == "450.00"
+        assert "$" not in kroger["debit"] and "," not in kroger["debit"]
 
     def test_decimal_formatting_edges(self):
         assert exporting._decimal(0) == "0.00"

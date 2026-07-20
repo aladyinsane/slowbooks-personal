@@ -30,25 +30,13 @@ NORMAL_BALANCE = {
 }
 
 # Account ranges by type, per the standard convention. Used to *validate* a code.
+#
+# Business books split "expense" into 5000s (cost of goods sold) and 6000s (operating
+# expenses) because a business needs gross profit to mean something. A household has no
+# goods it resells, so that split has no referent here -- expense is just 6000-6999, one
+# range, and a new account can be auto-numbered into it without a COGS-vs-opex judgment
+# call getting made on the user's behalf.
 TYPE_RANGES = {
-    ASSET: (1000, 1999),
-    LIABILITY: (2000, 2999),
-    EQUITY: (3000, 3999),
-    REVENUE: (4000, 4999),
-    EXPENSE: (5000, 6999),  # 5000s COGS, 6000s operating expenses
-}
-
-# Where a *new* account of each type should be numbered, which is not the same question.
-#
-# "expense" spans 5000-6999, but the P&L treats those halves differently: 5000s are cost
-# of goods sold and sit above gross profit; 6000s are operating expenses and sit below
-# it. Auto-numbering into the lowest free slot put a new "Studio rent" at 5010 -- i.e.
-# into COGS -- which understates gross profit on every report thereafter.
-#
-# So new expenses default to the 6000s. Operating expense is overwhelmingly the common
-# case, and COGS is a deliberate choice a user can still make by naming a 5xxx code
-# explicitly. The type alone cannot tell us which they meant; the safer default can.
-NEW_ACCOUNT_RANGES = {
     ASSET: (1000, 1999),
     LIABILITY: (2000, 2999),
     EQUITY: (3000, 3999),
@@ -72,113 +60,105 @@ class Account:
 
 
 # The accounts money actually moves *through*, as opposed to the categories it moves
-# *to*. Note this is not "all assets and liabilities": Accounts Receivable and Equipment
-# are assets you cannot transfer to, and offering them as transfer targets would be
-# offering nonsense. A loan is here because paying it down is a real transfer of money.
+# *to*. Note this is not "all assets and liabilities": money someone owes you and
+# property you own are assets you cannot transfer to, and offering them as transfer
+# targets would be offering nonsense. A loan is here because paying it down is a real
+# transfer of money.
 STATEMENT_ACCOUNT_CODES = frozenset({
-    "1000",  # Business Checking
-    "1010",  # Business Savings
-    "2100",  # Credit Card Payable
+    "1000",  # Checking
+    "1010",  # Savings
+    "1020",  # Investments
+    "2100",  # Credit Card
     "2500",  # Loans Payable
 })
 
 
 # A default chart that is good enough to ignore on day one. A new user should never
-# face an empty screen, but every line here is editable -- research is explicit that a
-# flexible chart is what lets the software keep up with a growing business.
+# face an empty screen, but every line here is editable -- a flexible chart is what lets
+# the software keep up with a life that doesn't stay the same shape.
 #
 # The fourth field is guidance: one plain sentence, shown at the moment of choosing.
 # Principle 2 says rigor underneath, plain language on top, and this is where that gets
 # tested -- "what does a credit card payment go to?" is a fair question with a
 # non-obvious answer, and a chart of accounts that only makes sense to an accountant has
 # failed the person it is for.
-#
-# Written by a developer. Section 5 of docs/review/cpa-review-request.md asks a CPA to
-# correct these, because being confidently wrong here is worse than saying nothing.
 DEFAULT_CHART: list[tuple[str, str, str, str]] = [
     # Assets
-    ("1000", "Business Checking", ASSET,
-     "Your main account. Money in and out of the business day to day."),
-    ("1010", "Business Savings", ASSET,
+    ("1000", "Checking", ASSET,
+     "Your main account. Money in and out day to day."),
+    ("1010", "Savings", ASSET,
      "Money set aside. Moving money here isn't spending it — it's still yours."),
-    ("1100", "Accounts Receivable", ASSET,
-     "Work you've invoiced but haven't been paid for yet."),
-    ("1200", "Undeposited Funds", ASSET,
-     "Payments you've received but haven't banked yet, like cheques in a drawer."),
-    ("1500", "Equipment", ASSET,
-     "Things you bought to keep and use, not to resell — a laptop, a van, a machine. "
-     "Big purchases go here rather than to an expense."),
-    ("1510", "Accumulated Depreciation", ASSET,
-     "How much value your equipment has lost over time. Your accountant usually sets this."),
+    ("1020", "Investments", ASSET,
+     "Money moved into a brokerage, retirement, or HSA account. Still yours, just "
+     "growing somewhere else."),
+    ("1100", "Owed to You", ASSET,
+     "Money someone else owes you — a loan you gave, a shared bill they haven't paid "
+     "back yet."),
+    ("1500", "Property & Vehicles", ASSET,
+     "Big things you own outright — a car, a home, furniture. Big purchases go here "
+     "rather than to an expense."),
     # Liabilities
-    ("2000", "Accounts Payable", LIABILITY,
+    ("2000", "Bills Owed", LIABILITY,
      "Bills you've received but haven't paid yet."),
-    ("2100", "Credit Card Payable", LIABILITY,
+    ("2100", "Credit Card", LIABILITY,
      "What you owe on the card. Paying the card is NOT an expense — the purchases were "
      "already counted when you charged them. Choose this to record a payment."),
-    ("2200", "Sales Tax Payable", LIABILITY,
-     "Sales tax you've collected and owe to the state. It was never your money."),
     ("2500", "Loans Payable", LIABILITY,
-     "What you still owe on a loan. A loan payment is part this and part Interest "
-     "Expense — only the interest part is an expense."),
+     "What you still owe on a loan — student loan, auto loan, mortgage. A loan payment "
+     "is part this and part Interest Expense — only the interest part is an expense."),
     # Equity
-    ("3000", "Owner's Capital", EQUITY,
-     "Your own money put into the business. It's not income — you didn't earn it, you "
-     "invested it."),
-    ("3100", "Owner's Draw", EQUITY,
-     "Money you take out for yourself. NOT an expense and not wages — it's you taking "
-     "back part of your stake, so it never touches your profit."),
-    ("3900", "Retained Earnings", EQUITY,
-     "Profit from previous years that stayed in the business. Usually your accountant's "
-     "territory."),
-    # Revenue
-    ("4000", "Sales Revenue", REVENUE,
-     "Money earned selling goods."),
-    ("4100", "Service Revenue", REVENUE,
-     "Money earned doing work for clients."),
+    ("3000", "Opening Balance", EQUITY,
+     "Your net worth on the day you started tracking. Not income — you didn't earn it, "
+     "it's just where the books started."),
+    ("3900", "Net Worth Carried Forward", EQUITY,
+     "Savings from previous years, rolled forward when you close a period."),
+    # Income
+    ("4000", "Salary & Wages", REVENUE,
+     "Your paycheck — salary, wages, tips."),
+    ("4100", "Freelance & Side Income", REVENUE,
+     "Money earned outside a regular job — freelance work, a side gig."),
+    ("4200", "Interest & Dividends", REVENUE,
+     "Interest from savings, dividends from investments."),
     ("4900", "Other Income", REVENUE,
-     "Money earned that isn't your main line of work — interest, a rebate, a one-off."),
-    # Cost of goods sold
-    ("5000", "Cost of Goods Sold", EXPENSE,
-     "What the thing you sold actually cost you. Only for costs tied to a specific sale."),
-    ("5100", "Materials & Supplies", EXPENSE,
-     "Raw materials and parts that go into what you sell."),
-    ("5200", "Subcontractors", EXPENSE,
-     "People you paid to do work you were hired for."),
-    # Operating expenses
-    ("6000", "Advertising & Marketing", EXPENSE,
-     "Ads, website, printing, anything to get customers."),
-    ("6050", "Bank & Merchant Fees", EXPENSE,
-     "Bank charges and card processing fees — Stripe, Square, monthly account fees."),
-    ("6100", "Office Supplies", EXPENSE,
-     "Small things you use up: paper, pens, coffee, printer ink, stationery."),
-    ("6150", "Software & Subscriptions", EXPENSE,
-     "Anything you pay for monthly or yearly to run the business."),
-    ("6200", "Rent & Lease", EXPENSE,
-     "Rent for your premises or leased equipment."),
-    ("6250", "Utilities", EXPENSE,
-     "Power, water, gas for your business premises."),
+     "Money that doesn't fit elsewhere — a gift, a rebate, a tax refund, a reimbursement."),
+    # Expenses
+    ("6000", "Rent & Mortgage", EXPENSE,
+     "Rent, or the payment on your mortgage."),
+    ("6050", "Utilities", EXPENSE,
+     "Electricity, water, gas, trash — running your home."),
+    ("6100", "Groceries", EXPENSE,
+     "Food and household basics from the grocery store."),
+    ("6150", "Dining & Takeout", EXPENSE,
+     "Restaurants, coffee, delivery apps — meals you didn't cook."),
+    ("6200", "Transportation & Fuel", EXPENSE,
+     "Gas, parking, tolls, public transit, rideshares."),
+    ("6250", "Auto Maintenance & Repairs", EXPENSE,
+     "Repairs, oil changes, tires — keeping a car running."),
     ("6300", "Insurance", EXPENSE,
-     "Business insurance premiums."),
-    ("6350", "Professional Fees", EXPENSE,
-     "Your accountant, lawyer, consultants."),
-    ("6400", "Travel", EXPENSE,
-     "Flights, hotels, taxis and trains for business trips."),
-    ("6450", "Meals & Entertainment", EXPENSE,
-     "Meals with a business purpose. Keep a note of who and why — the IRS asks."),
-    ("6500", "Vehicle & Fuel", EXPENSE,
-     "Gas, repairs and running costs for a business car, van or truck."),
-    ("6550", "Repairs & Maintenance", EXPENSE,
-     "Fixing things you already own. If it's an upgrade that lasts years, it's Equipment."),
-    ("6600", "Shipping & Postage", EXPENSE,
-     "Postage and delivery — USPS, FedEx, couriers."),
-    ("6650", "Telephone & Internet", EXPENSE,
-     "Phone and internet for the business."),
-    ("6700", "Interest Expense", EXPENSE,
-     "The interest part of a loan or card payment. This part IS an expense; the "
+     "Health, auto, home or renter's, life — premiums you pay regularly."),
+    ("6350", "Healthcare & Medical", EXPENSE,
+     "Doctor visits, prescriptions, dental, therapy — costs insurance didn't cover."),
+    ("6400", "Personal Care & Fitness", EXPENSE,
+     "Haircuts, gym membership, toiletries — taking care of yourself."),
+    ("6450", "Entertainment", EXPENSE,
+     "Movies, games, concerts, hobbies — things you do for fun."),
+    ("6500", "Subscriptions & Memberships", EXPENSE,
+     "Streaming, apps, memberships you pay for monthly or yearly."),
+    ("6550", "Shopping", EXPENSE,
+     "Clothes, electronics, home goods — things you bought that aren't groceries."),
+    ("6600", "Travel", EXPENSE,
+     "Flights, hotels, trips — getting away."),
+    ("6650", "Phone & Internet", EXPENSE,
+     "Your phone and home internet bill."),
+    ("6700", "Bank & Card Fees", EXPENSE,
+     "Overdraft fees, ATM fees, monthly account fees."),
+    ("6750", "Interest Expense", EXPENSE,
+     "The interest part of a loan or credit card payment. This part IS an expense; the "
      "principal isn't."),
-    ("6750", "Taxes & Licenses", EXPENSE,
-     "Business licences, permits, and taxes that aren't income tax."),
+    ("6800", "Gifts & Donations", EXPENSE,
+     "Gifts you gave, money you donated."),
+    ("6850", "Taxes", EXPENSE,
+     "Income tax payments, property tax — money owed to the government."),
     ("6900", "Uncategorized Expense", EXPENSE,
      "A holding pen for things you haven't sorted yet. Try to keep this empty — anything "
      "left here is a number you can't explain."),
@@ -401,14 +381,12 @@ def next_code(conn: sqlite3.Connection, type_: str) -> str:
     """A free code in the right range, so the user never has to pick a number.
 
     The range is what makes the type safe (ADR 0010), which means the number is our
-    problem, not theirs. Someone adding "Studio rent" should not have to learn that
+    problem, not theirs. Someone adding "Pet care" should not have to learn that
     expenses live in the 6000s.
     """
-    if type_ not in NEW_ACCOUNT_RANGES:
+    if type_ not in TYPE_RANGES:
         raise ValueError(f"unknown account type {type_!r}")
-    # Not TYPE_RANGES: a new expense belongs in operating expenses, not COGS. See the
-    # comment on NEW_ACCOUNT_RANGES -- getting this wrong misfiles it above gross profit.
-    low, high = NEW_ACCOUNT_RANGES[type_]
+    low, high = TYPE_RANGES[type_]
 
     taken = {
         int(row["code"])
