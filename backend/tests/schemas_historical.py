@@ -145,4 +145,15 @@ CREATE TABLE reconciliations (
 );
 """
 
-SCHEMAS = {1: V1, 2: V2, 3: V3, 4: V4}
+# Shipped for ADR 0011: period locking. No column changes, just a new table.
+V5 = V4 + """
+CREATE TABLE period_closes (
+    id             INTEGER PRIMARY KEY,
+    closed_through TEXT NOT NULL,
+    closed_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    note           TEXT,
+    reopens_id     INTEGER REFERENCES period_closes(id)
+);
+"""
+
+SCHEMAS = {1: V1, 2: V2, 3: V3, 4: V4, 5: V5}

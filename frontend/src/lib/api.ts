@@ -24,6 +24,18 @@ export interface Account {
   is_statement_account: boolean;
   /** One plain sentence explaining what belongs here. Shown at the moment of choosing. */
   guidance: string | null;
+  /**
+   * Which group this displays under, e.g. "Groceries" under "Food & Dining" (ADR 0014).
+   * Null for an ungrouped account -- shown as "Other" in the UI, not an error.
+   */
+  group_id: number | null;
+  group_name: string | null;
+}
+
+export interface Group {
+  id: number;
+  name: string;
+  type: "asset" | "liability" | "equity" | "revenue" | "expense";
 }
 
 export interface StagedTransaction {
@@ -393,6 +405,7 @@ export const api = {
     // Omitted on purpose: the number range is what makes the type safe, so picking it
     // is our job (ADR 0010).
     code?: string;
+    group_id?: number | null;
   }) =>
     request<Account>("/accounts", {
       method: "POST",
@@ -402,13 +415,43 @@ export const api = {
 
   updateAccount: (
     id: number,
-    payload: { name?: string; description?: string | null; is_active?: boolean },
+    payload: {
+      name?: string;
+      description?: string | null;
+      is_active?: boolean;
+      group_id?: number | null;
+    },
   ) =>
     request<Account>(`/accounts/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+
+  listGroups: (type?: string) =>
+    request<Group[]>(`/groups${type ? `?type=${type}` : ""}`),
+
+  createGroup: (payload: { name: string; type: string }) =>
+    request<Group>("/groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  updateGroup: (id: number, payload: { name: string }) =>
+    request<Group>(`/groups/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  deleteGroup: async (id: number) => {
+    const response = await fetch(`${BASE}/groups/${id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.detail ?? `${response.status} ${response.statusText}`);
+    }
+  },
 
   deleteAccount: async (id: number) => {
     const response = await fetch(`${BASE}/accounts/${id}`, { method: "DELETE" });

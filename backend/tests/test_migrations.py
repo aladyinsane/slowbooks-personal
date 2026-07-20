@@ -81,6 +81,19 @@ class TestFixturesAreHonest:
         assert "period_closes" not in tables  # added in v5
         conn.close()
 
+    def test_v5_has_v5_things_but_not_v6_things(self, tmp_path):
+        path = tmp_path / "v5.db"
+        _make_old_database(path, 5)
+        conn = sqlite3.connect(str(path))
+
+        tables = {
+            r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        assert "period_closes" in tables
+        assert "groups" not in tables               # added in v6
+        assert "group_id" not in _columns(conn, "accounts")  # added in v6
+        conn.close()
+
     def test_v3_has_v3_things_but_not_v4_things(self, tmp_path):
         path = tmp_path / "v3.db"
         _make_old_database(path, 3)
@@ -97,7 +110,7 @@ class TestFixturesAreHonest:
 
 
 class TestUpgrades:
-    @pytest.mark.parametrize("from_version", [1, 2, 3, 4])
+    @pytest.mark.parametrize("from_version", [1, 2, 3, 4, 5])
     def test_old_database_reaches_current_schema(self, tmp_path, from_version):
         path = tmp_path / f"v{from_version}.db"
         _make_old_database(path, from_version)
@@ -110,16 +123,18 @@ class TestUpgrades:
         assert "transfer_match_id" in staged
         assert "is_statement_account" in _columns(conn, "accounts")
         assert "reconciliation_id" in _columns(conn, "journal_lines")
+        assert "group_id" in _columns(conn, "accounts")
         tables = {
             r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
         assert "period_closes" in tables
+        assert "groups" in tables
         assert conn.execute(
             "SELECT value FROM schema_meta WHERE key = 'version'"
         ).fetchone()["value"] == str(db.SCHEMA_VERSION)
         conn.close()
 
-    @pytest.mark.parametrize("from_version", [1, 2, 3, 4])
+    @pytest.mark.parametrize("from_version", [1, 2, 3, 4, 5])
     def test_reconciliation_works_after_migrating(self, tmp_path, from_version):
         """An old book must get the new feature, not just the new columns.
 
@@ -147,7 +162,7 @@ class TestUpgrades:
         assert reconciliation.latest(conn, checking).id == rec_id
         conn.close()
 
-    @pytest.mark.parametrize("from_version", [1, 2, 3, 4])
+    @pytest.mark.parametrize("from_version", [1, 2, 3, 4, 5])
     def test_migrated_database_is_fully_functional(self, tmp_path, from_version):
         """A migration that leaves the app broken is not a migration."""
         path = tmp_path / f"v{from_version}.db"
@@ -166,7 +181,7 @@ class TestUpgrades:
         assert result["from_starter_rules"] == 1
         conn.close()
 
-    @pytest.mark.parametrize("from_version", [1, 2, 3, 4])
+    @pytest.mark.parametrize("from_version", [1, 2, 3, 4, 5])
     def test_migration_is_idempotent(self, tmp_path, from_version):
         path = tmp_path / f"v{from_version}.db"
         _make_old_database(path, from_version)
@@ -243,6 +258,39 @@ class TestUpgrades:
         codes = {a.code for a in accounts.list_statement_accounts(conn)}
         assert codes == {"1000", "1010", "2100"}
         assert not accounts.by_code(conn, "6100").is_statement_account
+        conn.close()
+
+    def test_v6_backfills_groups_on_an_existing_chart(self, tmp_path):
+        """The v6 sibling of the v3 statement-account backfill test above.
+
+        An existing book already has accounts, so the post-SCHEMA seeding step is
+        skipped (it only fires on an empty accounts table). If group_id stayed NULL for
+        every row, a migrated book would look identical to a fresh one that never got
+        the feature -- the migration would have shipped a column nobody's data uses.
+        """
+        path = tmp_path / "v5.db"
+        _make_old_database(path, 5)
+
+        conn = sqlite3.connect(str(path))
+        conn.executescript(
+            """
+            INSERT INTO accounts (code, name, type, normal_balance)
+                 VALUES ('1000', 'Checking', 'asset', 'debit'),
+                        ('6100', 'Groceries', 'expense', 'debit'),
+                        ('6810', 'My Invented Category', 'expense', 'debit');
+            """
+        )
+        conn.commit()
+        conn.close()
+
+        conn = db.connect(path)
+        db.initialize(conn)
+
+        assert accounts.by_code(conn, "1000").group_name == "Cash & Investments"
+        assert accounts.by_code(conn, "6100").group_name == "Food & Dining"
+        # An unknown code (the user's own invented account) is left ungrouped rather
+        # than guessed at -- the UI shows this as "Other", not an error.
+        assert accounts.by_code(conn, "6810").group_id is None
         conn.close()
 
     def test_transfers_work_after_migrating_a_v1_book(self, tmp_path):
@@ -323,7 +371,7 @@ class TestSeedingAndSettings:
         assert before == after == len(categorize.rules.STARTER_RULES)
 
 
-@pytest.mark.parametrize("from_version", [1, 2, 3, 4])
+@pytest.mark.parametrize("from_version", [1, 2, 3, 4, 5])
 def test_period_locking_works_after_migrating(tmp_path, from_version):
     """An upgraded book must get the lock, not just the table.
 

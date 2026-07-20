@@ -17,6 +17,7 @@ from slowbooks import (
     accounts,
     categorize,
     exporting,
+    groups,
     ledger,
     money,
     periods,
@@ -44,14 +45,16 @@ class AccountIn(BaseModel):
     type: str
     description: str | None = None
     is_statement_account: bool = False
+    group_id: int | None = None
 
 
 class AccountUpdateIn(BaseModel):
-    """Rename, re-word, hide, unhide. Deliberately no `code` or `type` (ADR 0010)."""
+    """Rename, re-word, hide, unhide, or regroup. No `code` or `type` (ADR 0010)."""
 
     name: str | None = None
     description: str | None = None
     is_active: bool | None = None
+    group_id: int | None = None
 
 
 def _account_json(account: accounts.Account) -> dict:
@@ -67,6 +70,10 @@ def _account_json(account: accounts.Account) -> dict:
         # Shown where the category is chosen. "What does a card payment go to?" is a
         # fair question and the answer belongs next to the answer, not in a help page.
         "guidance": account.description,
+        # Which group this displays under (ADR 0014) -- null for an ungrouped account,
+        # shown as "Other" in the UI rather than treated as an error.
+        "group_id": account.group_id,
+        "group_name": account.group_name,
     }
 
 
@@ -113,7 +120,7 @@ def update_account(account_id: int, payload: AccountUpdateIn, conn=Depends(get_d
         account = accounts.update(
             conn, account_id,
             name=payload.name, description=payload.description,
-            is_active=payload.is_active,
+            is_active=payload.is_active, group_id=payload.group_id,
         )
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -142,13 +149,71 @@ def create_account(payload: AccountIn, conn=Depends(get_db)):
         code = payload.code or accounts.next_code(conn, payload.type)
         account = accounts.create(
             conn, code, payload.name, payload.type, payload.description,
-            is_statement_account=payload.is_statement_account,
+            is_statement_account=payload.is_statement_account, group_id=payload.group_id,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except sqlite3.IntegrityError as exc:
         raise HTTPException(409, f"account code {payload.code} is already taken") from exc
     return _account_json(account)
+
+
+# ---------------------------------------------------------------- groups
+
+
+class GroupIn(BaseModel):
+    name: str = Field(..., min_length=1)
+    type: str
+
+
+class GroupUpdateIn(BaseModel):
+    """Rename only -- changing a group's type is refused (see groups.update)."""
+
+    name: str = Field(..., min_length=1)
+
+
+def _group_json(group: groups.Group) -> dict:
+    return {"id": group.id, "name": group.name, "type": group.type}
+
+
+@router.get("/groups", tags=["groups"])
+def list_groups(type: str | None = None, conn=Depends(get_db)):
+    return [_group_json(g) for g in groups.list_all(conn, type_=type)]
+
+
+@router.post("/groups", tags=["groups"], status_code=201)
+def create_group(payload: GroupIn, conn=Depends(get_db)):
+    try:
+        group = groups.create(conn, payload.name, payload.type)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(
+            409, f"a {payload.type} group named {payload.name!r} already exists"
+        ) from exc
+    return _group_json(group)
+
+
+@router.patch("/groups/{group_id}", tags=["groups"])
+def update_group(group_id: int, payload: GroupUpdateIn, conn=Depends(get_db)):
+    try:
+        group = groups.update(conn, group_id, name=payload.name)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return _group_json(group)
+
+
+@router.delete("/groups/{group_id}", tags=["groups"], status_code=204)
+def delete_group(group_id: int, conn=Depends(get_db)):
+    """Delete a group with no accounts filed under it. Refused otherwise."""
+    try:
+        groups.delete(conn, group_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except groups.GroupInUseError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 # ---------------------------------------------------------------- import
