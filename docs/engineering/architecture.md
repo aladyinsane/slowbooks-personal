@@ -15,7 +15,7 @@
 │   ledger  · importing · categorize      │   backend/slowbooks/
 │   reports · accounts   · money          │
 ├─────────────────────────────────────────┤
-│  SQLite — one file, user-owned          │   ~/slowbooks.db
+│  SQLite — one file, user-owned          │   ~/slowbooks-personal.db
 │  debits==credits enforced by trigger    │
 └─────────────────────────────────────────┘
 ```

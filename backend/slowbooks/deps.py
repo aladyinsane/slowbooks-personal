@@ -68,18 +68,24 @@ def database_path() -> Path:
 def _default_database_path() -> Path:
     """Next to the executable in a packaged build; the home folder in development.
 
-    Packaged, the book sits beside ``SlowBooks.exe`` so the two travel together -- copy
-    the folder to a USB stick or a new machine and your books come with the program. That
-    is ADR 0001 made literal. ``sys.executable`` is the real exe (not PyInstaller's temp
-    unpack dir), so ``.parent`` is the folder the user actually put SlowBooks in.
+    Packaged, the book sits beside the executable so the two travel together -- copy the
+    folder to a USB stick or a new machine and your books come with the program. That is
+    ADR 0001 made literal. ``sys.executable`` is the real exe (not PyInstaller's temp
+    unpack dir), so ``.parent`` is the folder the user actually put the program in.
 
     In development there is no meaningful "next to" -- the entry point is a `uvicorn`
     process deep in a venv -- so home keeps a dev's tree tidy and matches the documented
     workflow ([ADR 0013](../../docs/decisions/0013-ship-as-a-double-click-app.md)).
+
+    Filename is ``slowbooks-personal.db``, not ``slowbooks.db``: this fork and the
+    original small-business SlowBooks default to the same home directory when both are
+    installed on one machine, and shared filenames would mean one silently overwrites the
+    other's books. `SLOWBOOKS_DB` still overrides this for anyone who wants a different
+    path or filename entirely.
     """
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent / "slowbooks.db"
-    return Path.home() / "slowbooks.db"
+        return Path(sys.executable).resolve().parent / "slowbooks-personal.db"
+    return Path.home() / "slowbooks-personal.db"
 
 
 def get_db() -> sqlite3.Connection:

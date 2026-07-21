@@ -58,8 +58,9 @@ curl -F "file=@sample-data/chase-checking-jan2026.csv" \
      "http://localhost:8000/api/imports?account_id=1"
 ```
 
-Your books live at `~/slowbooks.db`. Copy it anywhere; it's yours. Override with
-`SLOWBOOKS_DB`.
+Your books live at `~/slowbooks-personal.db` — named so it doesn't collide with the
+original business SlowBooks' `slowbooks.db` if you have both installed. Copy it anywhere;
+it's yours. Override with `SLOWBOOKS_DB`.
 
 Frontend — run alongside the backend, which it proxies to:
 

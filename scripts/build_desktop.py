@@ -44,7 +44,7 @@ def build_executable() -> None:
     add_data = f"{FRONTEND_DIST}{os.pathsep}frontend"
     cmd = [
         sys.executable, "-m", "PyInstaller",
-        "--name", "SlowBooks",
+        "--name", "SlowBooks Personal",
         "--onefile",          # one file to hand over
         "--console",          # the window is the off switch: close it, server stops
         "--noconfirm",
@@ -67,7 +67,7 @@ def build_executable() -> None:
 def main() -> None:
     build_frontend()
     build_executable()
-    exe = DIST / ("SlowBooks.exe" if os.name == "nt" else "SlowBooks")
+    exe = DIST / ("SlowBooks Personal.exe" if os.name == "nt" else "SlowBooks Personal")
     print("\nDone.")
     print(f"  {exe}")
     print("  Hand this single file to the tester. First launch on Windows shows a")

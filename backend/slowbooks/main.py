@@ -21,8 +21,8 @@ from fastapi.staticfiles import StaticFiles
 from slowbooks.api.routes import router
 
 app = FastAPI(
-    title="SlowBooks",
-    description="Simple accounting software that doesn't suck to use.",
+    title="SlowBooks Personal",
+    description="Simple personal finance software that doesn't suck to use.",
     version="0.1.0",
 )
 
@@ -66,4 +66,4 @@ else:
     @app.get("/")
     def root():
         # Development, API-only: point a curious browser at the docs rather than 404.
-        return {"name": "SlowBooks", "version": "0.1.0", "docs": "/docs"}
+        return {"name": "SlowBooks Personal", "version": "0.1.0", "docs": "/docs"}

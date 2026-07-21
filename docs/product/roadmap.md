@@ -117,7 +117,8 @@ See [future-features.md](future-features.md).
 ## Cross-cutting, always
 
 - Performance budget: <100ms categorization, <1s reports at 50k transactions
-- Packaging: a thing a non-technical owner can double-click — **done for Windows**
-  ([ADR 0013](../decisions/0013-ship-as-a-double-click-app.md)): one `SlowBooks.exe`, no
-  Python/Node/terminal. Still to do: code signing, and a macOS/Linux build.
+- Packaging: a thing a non-technical person can double-click — **done for Windows**
+  ([ADR 0013](../decisions/0013-ship-as-a-double-click-app.md)): one `SlowBooks
+  Personal.exe`, no Python/Node/terminal. Still to do: code signing, and a macOS/Linux
+  build.
 - Test coverage on anything touching money
