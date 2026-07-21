@@ -68,7 +68,7 @@ WHAT'S IN HERE
   manifest.json         Row counts and schema version, so you can check nothing was
                         lost.
 
-  slowbooks.db          Not included here -- download it separately from Settings, or
+  slowbooks-personal.db Not included here -- download it separately from Settings, or
                         just copy the file. It is the complete book and the only thing
                         needed to restore.
 
