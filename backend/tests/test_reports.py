@@ -145,6 +145,55 @@ class TestReportsAgree:
         assert ledger.is_balanced(books)
 
 
+class TestGroupSubtotals:
+    """ADR 0014's "revisit when": reports subtotal by account group, not just flat lines."""
+
+    def test_expense_groups_have_correct_subtotals(self, books):
+        pnl = reports.profit_and_loss(books, "2026-01-01", "2026-03-31")
+        subtotals = {g["name"]: g["total_minor"] for g in pnl["operating_expenses"]["groups"]}
+        assert subtotals["Housing"] == 4_000_00       # rent x2
+        assert subtotals["Food & Dining"] == 450_00   # groceries
+
+    def test_group_subtotals_sum_to_the_section_total(self, books):
+        pnl = reports.profit_and_loss(books, "2026-01-01", "2026-03-31")
+        groups = pnl["operating_expenses"]["groups"]
+        assert sum(g["total_minor"] for g in groups) == pnl["operating_expenses"]["total_minor"]
+
+    def test_grouped_lines_are_the_same_lines_as_the_flat_list(self, books):
+        """The `groups` breakdown re-buckets the same data, not a second source of truth."""
+        pnl = reports.profit_and_loss(books, "2026-01-01", "2026-03-31")
+        flat_codes = {line["code"] for line in pnl["operating_expenses"]["lines"]}
+        grouped_codes = {
+            line["code"]
+            for group in pnl["operating_expenses"]["groups"]
+            for line in group["lines"]
+        }
+        assert flat_codes == grouped_codes
+
+    def test_an_ungrouped_account_lands_under_other(self, conn):
+        checking = accounts.by_code(conn, "1000").id
+        loose = accounts.create(conn, "6975", "Loose Expense", accounts.EXPENSE)
+        ledger.post(conn, "2026-01-15", "Something",
+                    [ledger.debit(loose.id, 100_00), ledger.credit(checking, 100_00)])
+
+        pnl = reports.profit_and_loss(conn, "2026-01-01", "2026-01-31")
+        other = next(g for g in pnl["operating_expenses"]["groups"] if g["name"] is None)
+        assert other["total_minor"] == 100_00
+
+    def test_balance_sheet_assets_are_grouped(self, books):
+        sheet = reports.balance_sheet(books, "2026-03-31")
+        subtotals = {g["name"]: g["total_minor"] for g in sheet["assets"]["groups"]}
+        # Checking is the only asset account touched in this fixture.
+        assert subtotals["Cash & Investments"] == 19_000_00
+
+    def test_current_period_earnings_has_no_group_of_its_own(self, books):
+        """It isn't tied to any account, so it can't have a group -- it lands in "Other"
+        (ADR 0014), same as a genuinely ungrouped equity account."""
+        sheet = reports.balance_sheet(books, "2026-03-31")
+        other = next(g for g in sheet["equity"]["groups"] if g["name"] is None)
+        assert any(line["name"] == "Current Period Earnings" for line in other["lines"])
+
+
 class TestTrialBalance:
     def test_debits_equal_credits(self, books):
         tb = reports.trial_balance(books, "2026-12-31")
