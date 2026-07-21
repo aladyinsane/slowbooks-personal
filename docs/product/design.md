@@ -10,8 +10,8 @@ make no sense* and pages that take *3–10 seconds*. Strip away the specifics an
 feeling users describe is **anxiety**: a screen that is busy, uncertain, and vaguely
 accusatory about work you haven't finished.
 
-So the counter isn't "prettier." It's **calm**. The design goal is that a business owner
-opens their books on a Sunday night and the screen doesn't make their shoulders rise.
+So the counter isn't "prettier." It's **calm**. The design goal is that someone opens
+their books on a Sunday night and the screen doesn't make their shoulders rise.
 
 The second thesis: **this is a document, not an app.** A ledger is one of the oldest
 document forms we have, and it's legible without any chrome at all. We lean on that —

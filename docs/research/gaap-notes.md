@@ -1,11 +1,12 @@
 # GAAP and Accounting Fundamentals — Implementation Notes
 
-Research date: 2026-07-16.
+Research date: 2026-07-16, updated 2026-07-20 for the personal-finance fork.
 
 > **Caveat.** This is an engineering reference for building the ledger correctly, not
-> accounting advice, and it was written by a developer rather than a CPA. Anything marked
-> **[CPA REVIEW]** should be checked by an accountant before we ship it to real users
-> making real tax filings.
+> accounting or tax advice, and it was written by a developer rather than an accountant.
+> Anything marked **[CPA REVIEW]** is a spot where a tax professional's judgment matters
+> more than a developer's guess — check it before relying on this software for your own
+> tax filing.
 
 ## The one rule that determines the architecture
 
@@ -21,17 +22,18 @@ is no path from single-entry to GAAP later — it's a foundation decision. See
 
 ## Cash vs. accrual, and why we need both
 
-Many small businesses can use the **cash method for federal income tax purposes**:
-corporations or partnerships with average annual gross receipts of **$31 million or less**
-(inflation-adjusted) over the three prior tax years generally qualify.
+Individuals file taxes on a cash basis almost without exception — income is taxed when
+you receive it, not when you're owed it. But "when did the money actually move" and
+"what do I currently owe or have coming" are two different questions a household asks
+just as often as a business does: a bill you've received but haven't paid yet (tracked
+via the Bills Owed account) is a real accrual fact even though nothing has left your
+checking account.
 
-So the realistic situation for our user is: **accrual for GAAP-correct books, cash basis for
-the tax return.** This means basis is a *reporting-time toggle*, not a storage decision. We
-store accrual-truth journal entries and filter at report time.
-
-**[CPA REVIEW]** The exact cash-basis conversion rules (particularly around A/R, A/P, and
-prepaid expenses) need professional review before we advertise a cash-basis report as
-tax-ready.
+So the realistic situation is the same shape it was for the business version: **accrual
+for a complete picture of where things stand, cash basis for "what actually moved this
+month."** This means basis is a *reporting-time toggle*, not a storage decision. We store
+accrual-truth journal entries and filter at report time — see the cash-basis toggle
+tracked in [product/roadmap.md](../product/roadmap.md).
 
 Implementation consequence: **never** store a transaction in a way that loses the accrual
 information. You can derive cash from accrual; you cannot derive accrual from cash.
@@ -72,14 +74,14 @@ this in the database layer and it is the reason the books can never silently dri
 
 ### Worked example — the user's mental model vs. ours
 
-The owner sees: *"$450 at Staples on the business card."*
+The user sees: *"$45 at Kroger on the credit card."*
 
 We record:
 
 | Account | Debit | Credit |
 |---|---|---|
-| 6100 Office Supplies (Expense) | $450.00 | |
-| 2100 Credit Card Payable (Liability) | | $450.00 |
+| 6100 Groceries (Expense) | $45.00 | |
+| 2100 Credit Card (Liability) | | $45.00 |
 
 Expense up (debit), liability up (credit). Balanced. The user never sees this table unless
 they ask — but it's what makes the Balance Sheet work.
@@ -90,23 +92,29 @@ A numbering convention that accountants already expect, and that sorts correctly
 
 | Range | Type | Examples |
 |---|---|---|
-| 1000–1999 | Assets | Checking, Savings, A/R, Fixed Assets |
-| 2000–2999 | Liabilities | Credit Cards, A/P, Loans Payable |
-| 3000–3999 | Equity | Owner's Capital, Owner's Draw, Retained Earnings |
-| 4000–4999 | Revenue | Sales, Service Income |
-| 5000–5999 | COGS | Materials, Direct Labor |
-| 6000–6999 | Expenses | Rent, Utilities, Office Supplies, Software |
+| 1000–1999 | Assets | Checking, Savings, Investments, Property |
+| 2000–2999 | Liabilities | Credit Card, Bills Owed, Loans Payable |
+| 3000–3999 | Equity | Opening Balance, Net Worth Carried Forward |
+| 4000–4999 | Revenue | Salary & Wages, Freelance & Side Income, Interest & Dividends |
+| 6000–6999 | Expenses | Rent, Utilities, Groceries, Subscriptions |
+
+Note there's no 5000s range here. The original business version split expense into 5000s
+(cost of goods sold) and 6000s (operating expenses) because a business needs gross profit
+to mean something. A household has no goods it resells, so that split has no referent —
+expense is just 6000–6999, one range (see [accounts.py](../../backend/slowbooks/accounts.py)'s
+`TYPE_RANGES`).
 
 The chart must be **customizable** — a flexible chart of accounts is repeatedly called out
-as what lets the software keep up with a growing business. But it should ship with a
-sensible default so a new user isn't staring at an empty screen on day one. Defaults that
-are good enough to ignore are the whole game here.
+as what lets the software keep up with a life that doesn't stay the same shape. But it
+should ship with a sensible default so a new user isn't staring at an empty screen on day
+one. Defaults that are good enough to ignore are the whole game here.
 
 ## Principles that constrain the software
 
 - **Revenue recognition** — revenue is recognized when *earned*, not when cash arrives.
-  (ASC 606 is the full standard and is far beyond v1 scope; the naive version is what
-  matters for a small service business.)
+  (ASC 606 is the full standard and is far beyond scope here; for a household the naive
+  version — a paycheck is income when it's paid, not when the pay period ended — is what
+  matters.)
 - **Matching principle** — expenses are recognized in the same period as the revenue they
   helped generate. This is what drives period-end adjusting entries.
 - **Consistency** — methods stay the same period to period. If we ever let users change

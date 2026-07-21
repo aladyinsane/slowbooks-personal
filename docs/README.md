@@ -5,17 +5,21 @@ deliberately said no to.
 
 **Note:** this is SlowBooks Personal, a fork of SlowBooks (small-business accounting)
 retargeted for personal finance. `research/quickbooks-pain-points.md`,
-`research/competitive-landscape.md`, `research/core-features.md`, `research/gaap-notes.md`,
-`review/cpa-review-request.md`, and every ADR in `decisions/` are the original project's
-research and decisions — kept as background, since the underlying engineering
+`research/competitive-landscape.md`, and every ADR in `decisions/` are the original
+project's research and decisions — kept as background, since the underlying engineering
 (double-entry, deterministic rules, local-first SQLite) carried over unchanged. Where one
 of those docs talks about QuickBooks, a CPA, or a business's chart of accounts, read it as
 design history rather than a description of this fork's target user.
 
-`product/principles.md` and `research/personal-finance-landscape.md` are current and
-describe this fork as it is today. `product/roadmap.md` and `product/future-features.md`
-are partway there — pruned of entries with no personal-finance analog, but not
-repopulated with new personal-finance-specific ideas yet.
+`product/principles.md`, `product/design.md`, `research/personal-finance-landscape.md`,
+`research/core-features.md`, and `research/gaap-notes.md` are current and describe this
+fork as it is today — the last two were originally written for the business version but
+turned out to be mostly engineering reference rather than business-specific, so they were
+updated in place rather than left as history. `docs/review/cpa-review-request.md` is
+retired with an explanation rather than left as unqualified history, since its entire
+premise (a CPA gate before real use) has no personal-finance equivalent. `product/roadmap.md`
+and `product/future-features.md` are partway there — pruned of entries with no
+personal-finance analog, but not repopulated with new personal-finance-specific ideas yet.
 
 ## Start here
 
@@ -32,11 +36,11 @@ specific finding.
 
 | Doc | What's in it |
 |---|---|
-| [personal-finance-landscape.md](research/personal-finance-landscape.md) | **Current.** How Mint/YNAB/Monarch/Copilot categorize and present data, a terminology translation table (Balance Sheet → Net Worth, etc.), and open questions for a future ADR (a Group layer, report renaming) |
+| [personal-finance-landscape.md](research/personal-finance-landscape.md) | **Current.** How Mint/YNAB/Monarch/Copilot categorize and present data, a terminology translation table (Balance Sheet → Net Worth, etc.), and the two open questions it raised (both now resolved — see ADRs 0014/0015) |
+| [core-features.md](research/core-features.md) | **Current, updated for this fork.** What a ledger like this needs beyond the original ask — bank reconciliation, transfer detection, why loan statements are harder than they look. Mostly audience-independent engineering scope; the business-only bits (owner's-draw framing, a Cash Flow Statement ADR 0015 decided against) were trimmed |
+| [gaap-notes.md](research/gaap-notes.md) | **Current, updated for this fork.** Double-entry, debits/credits, cash vs. accrual, chart of accounts, period close — an engineering reference, not accounting advice. Chart-of-accounts examples and the worked example now match this fork's actual chart; items marked **[CPA REVIEW]** still need a professional's judgment |
 | [quickbooks-pain-points.md](research/quickbooks-pain-points.md) | *Historical.* Why people dislike QuickBooks, grouped, with the design constraint each one implies — plus the honest counter-argument (the CPA is the gatekeeper) |
 | [competitive-landscape.md](research/competitive-landscape.md) | *Historical.* Xero, Wave, FreshBooks, OneUp. What their gaps tell us — notably that Xero can't do local backups either, and that Wave proves free isn't enough |
-| [core-features.md](research/core-features.md) | *Historical.* What a small-business system like this needs beyond the original ask. Bank reconciliation, transfer detection, and why loan statements are harder than they look |
-| [gaap-notes.md](research/gaap-notes.md) | *Historical.* Double-entry, debits/credits, cash vs. accrual, chart of accounts, period close. Engineering reference — items marked **[CPA REVIEW]** need a professional |
 
 ## Decisions (ADRs)
 
@@ -64,7 +68,7 @@ Numbered, immutable once accepted, superseded rather than edited. Every one has 
 | Doc | What's in it |
 |---|---|
 | [principles.md](product/principles.md) | **Current.** The eight principles, each traced to a finding in personal-finance-landscape.md, each with a test — plus what we're deliberately *not* |
-| [design.md](product/design.md) | The visual language: calm and document-like, and why. Colour means something or it isn't there. Written for "a business owner" but the design thesis carries over unchanged |
+| [design.md](product/design.md) | **Current.** The visual language: calm and document-like, and why. Colour means something or it isn't there — the design thesis was always audience-independent |
 | [roadmap.md](product/roadmap.md) | v0.1–v0.3 build history carries over unchanged; v0.4's business-only "accountant gate" milestone is retired (no analog); what comes next isn't decided |
 | [future-features.md](product/future-features.md) | The parking lot, pruned of business-only entries (invoicing, payroll, sales tax, etc.) — what's left are candidates that still apply |
 
@@ -72,7 +76,7 @@ Numbered, immutable once accepted, superseded rather than edited. Every one has 
 
 | Doc | What's in it |
 |---|---|
-| [cpa-review-request.md](review/cpa-review-request.md) | *Historical.* What we wanted a CPA to check on the original small-business ledger — built around owner's-draw/S-corp questions with no personal-finance equivalent |
+| [cpa-review-request.md](review/cpa-review-request.md) | **Retired**, with an explanation rather than left as unqualified history. Its owner's-draw/S-corp/CPA-gatekeeper premise has no personal-finance equivalent; the mechanics it asked about are covered by continuous tests instead of a one-time review |
 
 ## Engineering
 

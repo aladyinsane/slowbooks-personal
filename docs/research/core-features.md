@@ -1,7 +1,11 @@
-# Core Functionality a Small-Business Accounting System Needs
+# Core Functionality a Personal Ledger Needs
 
-Research date: 2026-07-16. This answers "what else does such a system need?" beyond the
-CSV import / categorization / P&L / Balance Sheet you named.
+Research date: 2026-07-16, updated 2026-07-20 for the personal-finance fork. Answers
+"what else does such a system need?" beyond the CSV import / categorization / P&L /
+Balance Sheet originally named — the engineering scope below turned out to be
+audience-independent even though this doc was first written for the small-business
+version. See [personal-finance-landscape.md](personal-finance-landscape.md) for what's
+specific to a household rather than a business.
 
 ## Tier 1 — Not optional. Without these it isn't accounting software.
 
@@ -11,7 +15,7 @@ CSV import / categorization / P&L / Balance Sheet you named.
 | **Chart of Accounts** | The vocabulary everything else is expressed in | v1 |
 | **CSV import** | Your stated entry point; also the universal path — every institution exports CSV | v1 |
 | **Transaction categorization** | The actual daily work of bookkeeping | v1 |
-| **P&L / Income Statement** | The report owners actually read | v1 |
+| **P&L / Income Statement** | The report people actually read | v1 |
 | **Balance Sheet** | Required by lenders and the IRS; proves the ledger is sound | v1 |
 | **Bank reconciliation** | See below — this is the one you didn't ask for and most need | v1 |
 | **Duplicate detection** | Re-importing an overlapping CSV is the #1 way to corrupt books | v1 |
@@ -24,11 +28,10 @@ CSV import / categorization / P&L / Balance Sheet you named.
 
 You didn't list it, but it's the feature that makes the books *trustworthy*. Reconciliation
 is the process of matching recorded transactions against the bank's records so the balances
-agree. Businesses use CSV files precisely for this.
+agree. Personal and business books alike use CSV files precisely for this.
 
-Without it, every report is "these are the numbers, probably." With it, a reconciled period
-is *proven* to match the bank. It's also the thing an accountant asks about first. Strong
-recommendation for v1.
+Without it, every report is "these are the numbers, probably." With it, a reconciled
+period is *proven* to match the bank. Strong recommendation for v1.
 
 ### Transfer detection deserves special mention
 
@@ -41,9 +44,7 @@ numbers look plausible. Research confirms good tools specifically "surface trans
 rows." Auto-detecting matched opposite pairs across accounts within a date window is high
 value and not hard.
 
-Likewise **refunds** (a credit that should reduce an expense, not create revenue) and
-**owner's draws vs. payroll** (a draw is equity, not an expense — getting this wrong
-misstates both the P&L and the tax return).
+Likewise **refunds** (a credit that should reduce an expense, not create revenue).
 
 ## Tier 2 — Strongly expected. Absence generates complaints.
 
@@ -61,21 +62,21 @@ misstates both the P&L and the tax return).
 - **Attachments.** Receipt images/PDFs on a transaction. This is where IRS substantiation
   actually lives.
 - **Multi-account.** Batch uploads across multiple accounts and statements at once,
-  organized by account. Even a one-person business has checking + a card + probably a loan.
-- **General Ledger and Trial Balance reports.** The owner won't read these; the *accountant*
-  will, and the accountant is the gatekeeper (see the counter-argument in
-  [quickbooks-pain-points.md](quickbooks-pain-points.md)).
-- **Cash Flow Statement.** The third of the big three financial statements. Owners
-  frequently care about it more than the P&L — profitable businesses die of cash flow.
+  organized by account. Even one person usually has checking + a card + probably a loan.
+- **General Ledger and Trial Balance.** Shipped as export/API-only, not an on-screen
+  report (ADR 0015) — no personal-finance app surfaces either, since "are my debits equal
+  to my credits" isn't a question a household asks. Kept for whoever does want to look,
+  and for the export's own completeness (ADR 0008).
 - **Undo.** Import 400 transactions, realize the mapping was wrong, undo the batch. Without
   this, an import mistake is a manual cleanup nightmare and users will fear the button.
 
 ## Tier 3 — Real, but deliberately deferred
 
 Documented in [product/future-features.md](../product/future-features.md) so they're
-remembered rather than accreted. Invoicing/AR, bills/AP, payroll, inventory/COGS,
-multi-currency, fixed asset depreciation schedules, sales tax, budgeting, multi-entity,
-bank feeds, mobile, receipt OCR, 1099 tracking.
+remembered rather than accreted: multi-currency, bank feeds, a mobile app, receipt
+capture, budgeting/forecasting. (The original version of this list also had invoicing/AR,
+bills/AP, payroll, inventory/COGS, sales tax, multi-entity, and 1099 tracking — all
+business-only, all removed when future-features.md was pruned for this fork.)
 
 ## Loan statements — a note on your specific ask
 
