@@ -13,6 +13,7 @@ import sqlite3
 from datetime import date
 
 from slowbooks import money
+from slowbooks.reports.grouping import group_lines
 
 
 def balance_sheet(conn: sqlite3.Connection, as_of: date | str) -> dict[str, object]:
@@ -26,42 +27,55 @@ def balance_sheet(conn: sqlite3.Connection, as_of: date | str) -> dict[str, obje
     as_of_iso = as_of.isoformat() if isinstance(as_of, date) else as_of
 
     rows = conn.execute(
-        """SELECT a.code, a.name, a.type, COALESCE(SUM(l.amount_minor), 0) AS balance
+        """SELECT a.code, a.name, a.type, g.name AS group_name,
+                  COALESCE(SUM(l.amount_minor), 0) AS balance
              FROM accounts a
+             LEFT JOIN groups g     ON g.id = a.group_id
              JOIN journal_lines l   ON l.account_id = a.id
              JOIN journal_entries e ON e.id = l.entry_id
             WHERE e.posted_at IS NOT NULL
               AND e.entry_date <= ?
-            GROUP BY a.id, a.code, a.name, a.type
+            GROUP BY a.id, a.code, a.name, a.type, g.name
            HAVING SUM(l.amount_minor) <> 0
             ORDER BY a.code""",
         (as_of_iso,),
     ).fetchall()
 
-    assets: list[dict[str, object]] = []
-    liabilities: list[dict[str, object]] = []
-    equity: list[dict[str, object]] = []
+    # Each entry pairs the line with its account's group name (ADR 0014) -- see
+    # group_lines() and pnl.py's identical pattern.
+    assets: list[tuple[dict[str, object], str | None]] = []
+    liabilities: list[tuple[dict[str, object], str | None]] = []
+    equity: list[tuple[dict[str, object], str | None]] = []
     earnings_minor = 0
 
     for row in rows:
         if row["type"] == "asset":
             # Assets are debit-normal: positive internally is already positive here.
-            assets.append(_line(row["code"], row["name"], row["balance"]))
+            assets.append((_line(row["code"], row["name"], row["balance"]), row["group_name"]))
         elif row["type"] == "liability":
-            liabilities.append(_line(row["code"], row["name"], -row["balance"]))
+            liabilities.append(
+                (_line(row["code"], row["name"], -row["balance"]), row["group_name"])
+            )
         elif row["type"] == "equity":
-            equity.append(_line(row["code"], row["name"], -row["balance"]))
+            equity.append((_line(row["code"], row["name"], -row["balance"]), row["group_name"]))
         else:
             # Revenue and expense roll up into a single equity line.
             earnings_minor -= row["balance"]
 
-    total_assets = sum(int(item["amount_minor"]) for item in assets)
-    total_liabilities = sum(int(item["amount_minor"]) for item in liabilities)
+    asset_lines = [line for line, _ in assets]
+    liability_lines = [line for line, _ in liabilities]
 
-    equity_lines = list(equity)
+    total_assets = sum(int(item["amount_minor"]) for item in asset_lines)
+    total_liabilities = sum(int(item["amount_minor"]) for item in liability_lines)
+
+    equity_entries = list(equity)
     if earnings_minor != 0:
-        equity_lines.append(_line("", "Current Period Earnings", earnings_minor))
+        # Not tied to any account, so it can't have a group -- group_lines() files it
+        # under "Other" alongside any genuinely ungrouped equity account, same as an
+        # account with no group_id.
+        equity_entries.append((_line("", "Current Period Earnings", earnings_minor), None))
 
+    equity_lines = [line for line, _ in equity_entries]
     total_equity = sum(int(item["amount_minor"]) for item in equity_lines)
 
     return {
@@ -69,17 +83,20 @@ def balance_sheet(conn: sqlite3.Connection, as_of: date | str) -> dict[str, obje
         "basis": "accrual",
         "as_of": as_of_iso,
         "assets": {
-            "lines": assets,
+            "lines": asset_lines,
+            "groups": group_lines(assets),
             "total_minor": total_assets,
             "total": money.format(total_assets),
         },
         "liabilities": {
-            "lines": liabilities,
+            "lines": liability_lines,
+            "groups": group_lines(liabilities),
             "total_minor": total_liabilities,
             "total": money.format(total_liabilities),
         },
         "equity": {
             "lines": equity_lines,
+            "groups": group_lines(equity_entries),
             "total_minor": total_equity,
             "total": money.format(total_equity),
         },

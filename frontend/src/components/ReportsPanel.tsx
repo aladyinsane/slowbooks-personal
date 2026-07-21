@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { api, type IncomeAndExpenses, type NetWorth, type ReportLine } from "../lib/api";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import {
+  api,
+  type GroupSubtotal,
+  type IncomeAndExpenses,
+  type NetWorth,
+  type ReportLine,
+} from "../lib/api";
 
 /**
  * The reports, on screen at last (ADR 0012).
@@ -78,26 +84,57 @@ export function ReportsPanel({ onDrillDown }: Props) {
     </tr>
   );
 
-  const Section = ({ title, lines, total }: { title: string; lines: ReportLine[]; total: string }) => (
-    <>
-      <tr className="section-head">
-        <th colSpan={2}>{title}</th>
-      </tr>
-      {lines.length === 0 ? (
-        <tr>
-          <td colSpan={2} className="muted">
-            Nothing yet
-          </td>
+  // A group heading and subtotal only earn their place (principle 4) when there's more
+  // than one group to distinguish -- a single-group section would show a subtotal
+  // that's just a duplicate of the section total underneath it.
+  const Section = ({
+    title,
+    groups,
+    total,
+  }: {
+    title: string;
+    groups: GroupSubtotal[];
+    total: string;
+  }) => {
+    const showSubtotals = groups.length > 1;
+    return (
+      <>
+        <tr className="section-head">
+          <th colSpan={2}>{title}</th>
         </tr>
-      ) : (
-        lines.map((line) => <Line key={line.code + line.name} line={line} />)
-      )}
-      <tr className="section-total">
-        <td>Total {title.toLowerCase()}</td>
-        <td className="num">{total}</td>
-      </tr>
-    </>
-  );
+        {groups.length === 0 ? (
+          <tr>
+            <td colSpan={2} className="muted">
+              Nothing yet
+            </td>
+          </tr>
+        ) : (
+          groups.map((group) => (
+            <Fragment key={group.name ?? "other"}>
+              {showSubtotals && (
+                <tr className="group-head">
+                  <td colSpan={2}>{group.name ?? "Other"}</td>
+                </tr>
+              )}
+              {group.lines.map((line) => (
+                <Line key={line.code + line.name} line={line} />
+              ))}
+              {showSubtotals && (
+                <tr className="subtotal">
+                  <td>{group.name ?? "Other"} subtotal</td>
+                  <td className="num">{group.total}</td>
+                </tr>
+              )}
+            </Fragment>
+          ))
+        )}
+        <tr className="section-total">
+          <td>Total {title.toLowerCase()}</td>
+          <td className="num">{total}</td>
+        </tr>
+      </>
+    );
+  };
 
   const reportTitle = tab === "pnl" ? "Income & Expenses" : "Net Worth";
   const periodLabel =
@@ -158,10 +195,10 @@ export function ReportsPanel({ onDrillDown }: Props) {
       {tab === "pnl" && pnl && (
         <table className="report">
           <tbody>
-            <Section title="Income" lines={pnl.revenue.lines} total={pnl.revenue.total} />
+            <Section title="Income" groups={pnl.revenue.groups} total={pnl.revenue.total} />
             <Section
               title="Expenses"
-              lines={pnl.operating_expenses.lines}
+              groups={pnl.operating_expenses.groups}
               total={pnl.operating_expenses.total}
             />
             <tr className="report-bottom-line">
@@ -177,13 +214,13 @@ export function ReportsPanel({ onDrillDown }: Props) {
       {tab === "balance" && sheet && (
         <table className="report">
           <tbody>
-            <Section title="Assets" lines={sheet.assets.lines} total={sheet.assets.total} />
+            <Section title="Assets" groups={sheet.assets.groups} total={sheet.assets.total} />
             <Section
               title="Liabilities"
-              lines={sheet.liabilities.lines}
+              groups={sheet.liabilities.groups}
               total={sheet.liabilities.total}
             />
-            <Section title="Equity" lines={sheet.equity.lines} total={sheet.equity.total} />
+            <Section title="Equity" groups={sheet.equity.groups} total={sheet.equity.total} />
             <tr className="report-bottom-line">
               <td>Liabilities and equity</td>
               <td className="num">{sheet.total_liabilities_and_equity}</td>

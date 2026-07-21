@@ -91,8 +91,23 @@ export interface ReportLine {
   amount: string;
 }
 
+/**
+ * The same lines as `lines`, re-bucketed by the account's group (ADR 0014) with its own
+ * subtotal -- "Food & Dining: $412" above the individual Groceries/Dining & Takeout
+ * lines. `name` is null for the "Other" bucket: an ungrouped account, or (on the Net
+ * Worth report's equity section) the synthetic Current Period Earnings line, which
+ * isn't tied to any account and so can't have a group of its own.
+ */
+export interface GroupSubtotal {
+  name: string | null;
+  lines: ReportLine[];
+  total_minor: number;
+  total: string;
+}
+
 export interface ReportSection {
   lines: ReportLine[];
+  groups: GroupSubtotal[];
   total_minor: number;
   total: string;
 }
