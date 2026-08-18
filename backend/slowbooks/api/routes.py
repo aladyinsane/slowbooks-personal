@@ -9,11 +9,12 @@ from __future__ import annotations
 import sqlite3
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from slowbooks import (
+    access,
     accounts,
     categorize,
     exporting,
@@ -31,7 +32,13 @@ from slowbooks.deps import database_path, get_db
 from slowbooks.importing import csv_import
 from slowbooks.reports.register import DEFAULT_LIMIT as REGISTER_PAGE_SIZE
 
-router = APIRouter()
+# Gated once here rather than per-endpoint: require_unlocked is a no-op unless LAN
+# access is on (see access.py), so this is a no-op for the whole existing test suite and
+# for anyone who never opts in.
+router = APIRouter(dependencies=[Depends(access.require_unlocked)])
+
+# The one endpoint that must be reachable while locked -- submitting the PIN itself.
+public_router = APIRouter()
 
 
 # ---------------------------------------------------------------- accounts
@@ -655,6 +662,67 @@ def acknowledge_starter_rules(conn=Depends(get_db)):
     """
     settings.set_bool(conn, settings.STARTER_RULES_ACKNOWLEDGED, True)
     return {"acknowledged": True}
+
+
+class NetworkIn(BaseModel):
+    enabled: bool
+
+
+@router.get("/settings/network", tags=["settings"])
+def get_network_settings():
+    return {
+        "lan_access_enabled": access.lan_access_enabled(),
+        "pin_configured": access.pin_configured(),
+    }
+
+
+@router.post(
+    "/settings/network",
+    tags=["settings"],
+    dependencies=[Depends(access.require_loopback)],
+)
+def set_network_settings(payload: NetworkIn, conn=Depends(get_db)):
+    """Turn LAN access on or off. Loopback-only: a LAN peer, even an unlocked one, must
+    never be able to grant itself broader access.
+
+    uvicorn's bind host is fixed at process start (see launch.py), so this takes effect
+    on the next launch, not immediately -- the response says so.
+    """
+    settings.set_bool(conn, settings.LAN_ACCESS_ENABLED, payload.enabled)
+    return {"lan_access_enabled": payload.enabled, "restart_required": True}
+
+
+class PinIn(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=8, pattern=r"^\d+$")
+
+
+@router.post("/access/pin", tags=["access"], dependencies=[Depends(access.require_loopback)])
+def set_pin(payload: PinIn, conn=Depends(get_db)):
+    access.set_pin(conn, payload.pin)
+    return {"pin_configured": True}
+
+
+class UnlockIn(BaseModel):
+    pin: str
+
+
+@public_router.post("/access/unlock", tags=["access"])
+def unlock(payload: UnlockIn, request: Request, response: Response):
+    ip = request.client.host if request.client else "unknown"
+    if access.is_locked_out(ip):
+        raise HTTPException(429, "Too many attempts. Try again in a minute.")
+    if not access.check_pin(payload.pin):
+        access.record_failure(ip)
+        raise HTTPException(401, "That PIN doesn't match.")
+    token = access.issue_session()
+    response.set_cookie(
+        access.COOKIE_NAME,
+        token,
+        httponly=True,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+    )
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------- export

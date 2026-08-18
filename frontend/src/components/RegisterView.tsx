@@ -175,7 +175,9 @@ export function RegisterView({ accounts, initial, onClose }: Props) {
                   <td className="muted register-other">
                     {accountId === null ? line.account : (line.other_side ?? "—")}
                   </td>
-                  <td className={line.amount_minor < 0 ? "num out" : "num in"}>{line.amount}</td>
+                  <td className={line.amount_minor < 0 ? "num amount out" : "num amount in"}>
+                    {line.amount}
+                  </td>
                   <td className="num register-balance">
                     {line.running_balance ?? ""}
                     {line.reconciled && (

@@ -13,6 +13,10 @@ Minor = int
 
 _CURRENCY_JUNK = re.compile(r"[$£€\s]")
 _PARENS_NEGATIVE = re.compile(r"^\((.*)\)$")
+# A comma with no decimal point anywhere is ambiguous on its own -- "3,000" (thousands)
+# vs "3,5" (European decimal). This distinguishes them: thousands grouping is always
+# groups of exactly three digits.
+_COMMA_THOUSANDS_ONLY = re.compile(r"^-?\d{1,3}(?:,\d{3})+$")
 
 
 class MoneyParseError(ValueError):
@@ -67,12 +71,21 @@ def _normalize_separators(text: str) -> str:
 
     The ambiguous case is "1.234,56" (European) vs "1,234.56" (US). Whichever
     separator appears last is the decimal point.
+
+    A lone comma with no dot at all is a second, distinct ambiguity: "3,000" (US
+    thousands grouping, no cents) vs "3,5" (European decimal). A comma isn't a decimal
+    point here unless it fails to look like thousands grouping -- see
+    _COMMA_THOUSANDS_ONLY.
     """
     last_comma = text.rfind(",")
     last_dot = text.rfind(".")
 
     if last_comma == -1 and last_dot == -1:
         return text
+    if last_dot == -1:
+        if _COMMA_THOUSANDS_ONLY.match(text):
+            return text.replace(",", "")
+        return text.replace(",", ".")
     if last_comma > last_dot:
         return text.replace(".", "").replace(",", ".")
     return text.replace(",", "")

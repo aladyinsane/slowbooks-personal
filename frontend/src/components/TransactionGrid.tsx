@@ -61,16 +61,21 @@ export function TransactionGrid({
                       : undefined
               }
             >
-              <td className="date">{row.date}</td>
-              <td className="desc" title={row.description}>
+              <td className="date" data-label="Date">{row.date}</td>
+              <td className="desc" data-label="Description" title={row.description}>
                 {row.description}
                 {row.status === "duplicate" && (
                   <span className="badge badge-dupe">possible duplicate</span>
                 )}
               </td>
-              <td className={row.amount_minor < 0 ? "num out" : "num in"}>{row.amount}</td>
+              <td
+                className={row.amount_minor < 0 ? "num out" : "num in"}
+                data-label="Amount"
+              >
+                {row.amount}
+              </td>
 
-              <td>
+              <td data-label="Category">
                 {row.is_transfer ? (
                   // Money moving between your own accounts has no category, and offering
                   // one would be offering a wrong answer.
@@ -90,7 +95,7 @@ export function TransactionGrid({
                 )}
               </td>
 
-              <td className="source">
+              <td className="source" data-label="Source">
                 {posted ? (
                   <span className="badge badge-posted">recorded</span>
                 ) : row.is_transfer ? (
