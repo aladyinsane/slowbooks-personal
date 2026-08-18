@@ -28,6 +28,14 @@ class TestParse:
             ("€1.234,56", 123456),
             ("  $12.00  ", 1200),
             ("5", 500),              # bare integer is dollars, not cents
+            ("3,000", 300000),           # US thousands grouping, no cents
+            ("15,000", 1500000),
+            ("100,000", 10000000),
+            ("1,234,567", 123456700),    # multiple thousands groups
+            ("1,234,567.89", 123456789), # thousands grouping plus real cents
+            ("-3,000", -300000),
+            ("12,50", 1250),             # short European decimal, not thousands
+            ("3,5", 350),
         ],
     )
     def test_parses_real_world_formats(self, text, expected):
