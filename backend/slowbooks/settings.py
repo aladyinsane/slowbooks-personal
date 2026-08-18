@@ -16,6 +16,15 @@ import sqlite3
 # Set once the user has seen and dismissed the first-run starter-rule warning (ADR 0006).
 STARTER_RULES_ACKNOWLEDGED = "starter_rules_acknowledged"
 
+# Opt-in, off by default: whether the server should bind to the LAN instead of just
+# localhost, so a phone on the same Wi-Fi can reach it. Read once at process start
+# (see launch.py) -- changing it takes effect on the next launch, not live.
+LAN_ACCESS_ENABLED = "lan_access_enabled"
+
+# Salted hash of the access PIN that gates non-loopback requests once LAN access is on
+# (see access.py). Unset means no PIN has been configured yet.
+ACCESS_PIN_HASH = "access_pin_hash"
+
 
 def get(conn: sqlite3.Connection, key: str, default: str | None = None) -> str | None:
     row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()

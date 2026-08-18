@@ -12,18 +12,32 @@ single double-click executable (ADR 0013).
 from __future__ import annotations
 
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from slowbooks.api.routes import router
+from slowbooks import access
+from slowbooks.api.routes import public_router, router
+from slowbooks.deps import get_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load the LAN/PIN state once at startup, regardless of entry point (launch.py,
+    # `uvicorn slowbooks.main:app`, or TestClient) -- the access-gate dependency reads
+    # this in-process cache rather than hitting SQLite on every request.
+    access.load(get_db())
+    yield
+
 
 app = FastAPI(
     title="SlowBooks Personal",
     description="Simple personal finance software that doesn't suck to use.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Only needed in development, where the Vite dev server is a different origin. In a
@@ -38,6 +52,7 @@ app.add_middleware(
 
 # The API is added before the static mount below, so /api always wins over the catch-all.
 app.include_router(router, prefix="/api")
+app.include_router(public_router, prefix="/api")
 
 
 def _frontend_dir() -> Path | None:

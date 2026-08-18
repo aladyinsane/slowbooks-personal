@@ -293,13 +293,25 @@ export interface ManagedAccount extends Account {
   can_delete: boolean;
 }
 
+/** Carries the HTTP status so callers can branch on it -- e.g. a 401 means "locked",
+ * not just "something went wrong" (see PinGate.tsx). */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, init);
   if (!response.ok) {
     // FastAPI puts the human-readable message in `detail`. Surfacing it beats a
     // generic failure toast -- the import errors in particular name the exact line.
     const body = await response.json().catch(() => null);
-    throw new Error(body?.detail ?? `${response.status} ${response.statusText}`);
+    const detail = typeof body?.detail === "string" ? body.detail : null;
+    throw new ApiError(detail ?? `${response.status} ${response.statusText}`, response.status);
   }
   return response.json() as Promise<T>;
 }
@@ -536,5 +548,29 @@ export const api = {
   acknowledgeStarterRules: () =>
     request<{ acknowledged: boolean }>("/settings/starter-rules-acknowledged", {
       method: "POST",
+    }),
+
+  networkSettings: () =>
+    request<{ lan_access_enabled: boolean; pin_configured: boolean }>("/settings/network"),
+
+  setLanAccess: (enabled: boolean) =>
+    request<{ lan_access_enabled: boolean; restart_required: boolean }>("/settings/network", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    }),
+
+  setPin: (pin: string) =>
+    request<{ pin_configured: boolean }>("/access/pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    }),
+
+  unlock: (pin: string) =>
+    request<{ ok: boolean }>("/access/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
     }),
 };

@@ -2,12 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ClosePanel } from "./components/ClosePanel";
 import { ExportPanel } from "./components/ExportPanel";
+import { NetworkPanel } from "./components/NetworkPanel";
+import { PinGate } from "./components/PinGate";
 import { RegisterView } from "./components/RegisterView";
 import { ReportsPanel } from "./components/ReportsPanel";
 import { ReconcilePanel } from "./components/ReconcilePanel";
 import { StarterRuleBanner } from "./components/StarterRuleBanner";
 import { TransactionGrid } from "./components/TransactionGrid";
-import { api, type Account, type ImportSummary, type StagedTransaction } from "./lib/api";
+import {
+  api,
+  ApiError,
+  type Account,
+  type ImportSummary,
+  type StagedTransaction,
+} from "./lib/api";
 
 /**
  * Import → review → post.
@@ -21,6 +29,9 @@ export function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [balanced, setBalanced] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set when a request comes back locked (401) -- a phone on the same Wi-Fi, LAN access
+  // on, not yet unlocked. Never true for the computer running SlowBooks itself.
+  const [locked, setLocked] = useState(false);
 
   const [accountId, setAccountId] = useState<number | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -46,16 +57,27 @@ export function App() {
     setBalanced(health.ledger_balanced);
   }, []);
 
-  useEffect(() => {
-    Promise.all([api.health(), api.listAccounts()])
+  const loadInitial = useCallback(() => {
+    return Promise.all([api.health(), api.listAccounts()])
       .then(([health, list]) => {
         setBalanced(health.ledger_balanced);
         setAccounts(list);
         const checking = list.find((a) => a.code === "1000");
         if (checking) setAccountId(checking.id);
+        setLocked(false);
       })
-      .catch((err: Error) => setError(err.message));
+      .catch((err: Error) => {
+        if (err instanceof ApiError && err.status === 401) {
+          setLocked(true);
+        } else {
+          setError(err.message);
+        }
+      });
   }, []);
+
+  useEffect(() => {
+    void loadInitial();
+  }, [loadInitial]);
 
   async function handleFile(file: File) {
     if (accountId === null) return;
@@ -191,6 +213,10 @@ export function App() {
     (r) => r.suggested_account_id !== null || r.is_transfer,
   ).length;
   const stillNeeded = draftRows.length - readyToRecord;
+
+  if (locked) {
+    return <PinGate onUnlock={() => void loadInitial()} />;
+  }
 
   return (
     <main>
@@ -335,6 +361,8 @@ export function App() {
       <ClosePanel />
 
       <ExportPanel />
+
+      <NetworkPanel />
 
       <footer>
         Your books live in a file on this computer. Nothing here is sent anywhere.
