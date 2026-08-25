@@ -421,6 +421,10 @@ export const api = {
     // is our job (ADR 0010).
     code?: string;
     group_id?: number | null;
+    // A second checking/savings/card/loan account -- e.g. a different institution
+    // (ADR 0007). Only asset/liability accounts can be one; the backend refuses
+    // otherwise.
+    is_statement_account?: boolean;
   }) =>
     request<Account>("/accounts", {
       method: "POST",
