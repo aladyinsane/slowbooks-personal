@@ -39,6 +39,7 @@ export function AccountsPanel() {
   const [newType, setNewType] = useState("expense");
   const [newGuidance, setNewGuidance] = useState("");
   const [newGroupId, setNewGroupId] = useState<string>("");
+  const [newIsStatementAccount, setNewIsStatementAccount] = useState(false);
   const [editingGroup, setEditingGroup] = useState<number | null>(null);
   const [draftGroupName, setDraftGroupName] = useState("");
   const [addingGroupForType, setAddingGroupForType] = useState<string | null>(null);
@@ -120,10 +121,12 @@ export function AccountsPanel() {
         type: newType,
         description: newGuidance.trim() || null,
         group_id: newGroupId ? Number(newGroupId) : null,
+        is_statement_account: newIsStatementAccount,
       });
       setNewName("");
       setNewGuidance("");
       setNewGroupId("");
+      setNewIsStatementAccount(false);
       setAdding(false);
       await refresh();
     } catch (e) {
@@ -389,10 +392,15 @@ export function AccountsPanel() {
           <select
             value={newType}
             onChange={(e) => {
-              setNewType(e.target.value);
+              const type = e.target.value;
+              setNewType(type);
               // A group belongs to one type (ADR 0014); switching type invalidates
               // whatever group was picked for the old one.
               setNewGroupId("");
+              // Only asset/liability accounts can hold money to import statements into
+              // or transfer between (ADR 0007); the checkbox below is hidden for any
+              // other type, so a previously-checked value shouldn't linger unseen.
+              if (type !== "asset" && type !== "liability") setNewIsStatementAccount(false);
             }}
             aria-label="Kind"
           >
@@ -402,6 +410,17 @@ export function AccountsPanel() {
               </option>
             ))}
           </select>
+          {(newType === "asset" || newType === "liability") && (
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={newIsStatementAccount}
+                onChange={(e) => setNewIsStatementAccount(e.target.checked)}
+              />
+              A second account you can import statements into and transfer money
+              between — e.g. checking at a different bank
+            </label>
+          )}
           <select
             value={newGroupId}
             onChange={(e) => setNewGroupId(e.target.value)}

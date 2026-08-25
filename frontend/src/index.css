@@ -706,6 +706,15 @@ button.link.plain { padding: 0; font-size: 0.8125rem; }
   padding: var(--s3) 0 0;
   border-top: 1px solid var(--rule-strong);
 }
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  flex-basis: 100%;
+}
 .account-footer {
   display: flex;
   align-items: center;
